@@ -20,55 +20,43 @@ const Snacks = () => {
 
     useEffect(() => {
         const ctx = gsap.context(() => {
-            gsap.fromTo(".snacks-header > *",
-                { y: 30, opacity: 0 },
-                {
-                    scrollTrigger: {
-                        trigger: sectionRef.current,
-                        start: "top 80%",
-                        once: true,
-                    },
-                    y: 0,
-                    opacity: 1,
-                    stagger: 0.2,
-                    duration: 0.8,
-                    ease: "power3.out",
-                    immediateRender: false,
-                }
-            );
+            gsap.from(".snacks-header > *", {
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: "top 80%",
+                    once: true,
+                },
+                y: 30,
+                opacity: 0,
+                stagger: 0.2,
+                duration: 0.8,
+                ease: "power3.out",
+            });
 
-            gsap.fromTo(".snack-item",
-                { x: -50, opacity: 0 },
-                {
-                    scrollTrigger: {
-                        trigger: sectionRef.current,
-                        start: "top 70%",
-                        once: true,
-                    },
-                    x: 0,
-                    opacity: 1,
-                    stagger: 0.1,
-                    duration: 0.6,
-                    ease: "back.out(1.7)",
-                    immediateRender: false,
-                }
-            );
+            gsap.from(".snack-item", {
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: "top 70%",
+                    once: true,
+                },
+                x: -50,
+                opacity: 0,
+                stagger: 0.1,
+                duration: 0.6,
+                ease: "back.out(1.7)",
+            });
 
-            gsap.fromTo(".snacks-image",
-                { scale: 0.9, opacity: 0 },
-                {
-                    scrollTrigger: {
-                        trigger: sectionRef.current,
-                        start: "top 60%",
-                        once: true,
-                    },
-                    scale: 1,
-                    opacity: 1,
-                    duration: 1,
-                    ease: "power2.out",
-                    immediateRender: false,
-                }
-            );
+            gsap.from(".snacks-image", {
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: "top 60%",
+                    once: true,
+                },
+                scale: 0.9,
+                opacity: 0,
+                duration: 1,
+                ease: "power2.out",
+            });
         }, sectionRef);
 
         const refreshTimeout = setTimeout(() => {

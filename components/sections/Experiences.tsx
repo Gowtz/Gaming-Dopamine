@@ -43,25 +43,18 @@ const Experiences = () => {
 
     useEffect(() => {
         const ctx = gsap.context(() => {
-            gsap.fromTo(".experience-card",
-                {
-                    y: 100,
-                    opacity: 0,
+            gsap.from(".experience-card", {
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: "top 80%",
+                    once: true,
                 },
-                {
-                    scrollTrigger: {
-                        trigger: sectionRef.current,
-                        start: "top 80%",
-                        once: true,
-                    },
-                    y: 0,
-                    opacity: 1,
-                    stagger: 0.2,
-                    duration: 0.8,
-                    ease: "power3.out",
-                    immediateRender: false,
-                }
-            );
+                y: 50,
+                opacity: 0,
+                stagger: 0.15,
+                duration: 1.2,
+                ease: "power3.out",
+            });
         }, sectionRef);
 
         const refreshTimeout = setTimeout(() => {

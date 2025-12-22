@@ -40,25 +40,18 @@ const WhyChooseUs = () => {
 
     useEffect(() => {
         const ctx = gsap.context(() => {
-            gsap.fromTo(".feature-card",
-                {
-                    opacity: 0,
-                    scale: 0.8,
+            gsap.from(".feature-card", {
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: "top 75%",
+                    once: true,
                 },
-                {
-                    scrollTrigger: {
-                        trigger: sectionRef.current,
-                        start: "top 75%",
-                        once: true,
-                    },
-                    opacity: 1,
-                    scale: 1,
-                    stagger: 0.1,
-                    duration: 0.8,
-                    ease: "expo.out",
-                    immediateRender: false,
-                }
-            );
+                opacity: 0,
+                scale: 0.9,
+                stagger: 0.1,
+                duration: 1.0,
+                ease: "expo.out",
+            });
         }, sectionRef);
 
         const refreshTimeout = setTimeout(() => {
