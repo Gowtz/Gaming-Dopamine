@@ -1,26 +1,55 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020617;
+  --foreground: #f8fafc;
+  --primary: #3b82f6;
+  --secondary: #a855f7;
+  --accent: #22c55e;
+  --card: #0f172a;
+  --card-foreground: #f8fafc;
+  --border: #1e293b;
+  --neon-blue: #00f2ff;
+  --neon-purple: #bc13fe;
+  --neon-green: #39ff14;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-green: var(--neon-green);
+  
+  --font-gaming: "Inter", "Outfit", sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-gaming);
+  overflow-x: hidden;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.bg-grid-white\/5 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='white' stroke-opacity='0.05'%3E%3Cpath d='M0 .5H31.5V32'/%3E%3C/svg%3E");
+}
+
+@layer utilities {
+  .text-shadow-neon-blue {
+    text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+  }
+  .text-shadow-neon-purple {
+    text-shadow: 0 0 10px var(--neon-purple), 0 0 20px var(--neon-purple);
+  }
 }
