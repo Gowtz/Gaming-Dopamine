@@ -75,14 +75,47 @@ model Preferences {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Slot {
+  id            String      @id @default(cuid())
+  title         String?
+  type          Platform
+  date          DateTime
+  startTime     String      // Format: "17:00"
+  endTime       String      // Format: "18:00"
+  duration      Int         // in minutes
+  price         Float
+  maxPlayers    Int         @default(1)
+  status        SlotStatus  @default(AVAILABLE)
+  isPublic      Boolean     @default(true)
+  bookings      Booking[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum Platform {
+  PS5
+  VR
+  RACING_SIM
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+  MAINTENANCE
+}
+
 model Booking {
   id          String   @id @default(cuid())
   userId      String
+  slotId      String?
   date        DateTime
   duration    Int      // in minutes
-  type        String   // PS5, VR, Racing
+  type        String   // Legacy field, keeping for compatibility
   status      String   // Upcoming, Completed, Cancelled
+  
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot        Slot?    @relation(fields: [slotId], references: [id])
 }
 
 model Wallet {
