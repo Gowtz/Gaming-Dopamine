@@ -2,12 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Gamepad2, Menu, X } from "lucide-react";
+import { Gamepad2, Menu, X, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useSession, signOut } from "next-auth/react";
+import Image from "next/image";
+
 const Navbar = () => {
+    const { data: session } = useSession();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const [mounted, setMounted] = useState(false);
 
@@ -23,10 +28,10 @@ const Navbar = () => {
     if (!mounted) return null;
 
     const navLinks = [
-        { name: "Experiences", href: "#experiences" },
-        { name: "Menu", href: "#menu" },
-        { name: "About", href: "#about" },
-        { name: "Contact", href: "#contact" },
+        { name: "Experiences", href: "/#experiences" },
+        { name: "Menu", href: "/#menu" },
+        { name: "About", href: "/#about" },
+        { name: "Contact", href: "/#contact" },
     ];
 
     return (
@@ -59,9 +64,51 @@ const Navbar = () => {
                             {link.name}
                         </Link>
                     ))}
-                    <button className="bg-primary hover:bg-neon-blue text-white px-6 py-2 rounded-full font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(0,242,255,0.6)]">
-                        BOOK NOW
-                    </button>
+
+                    {session ? (
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                className="flex items-center gap-3 p-1 pr-4 bg-zinc-900 border border-zinc-800 rounded-full hover:border-primary transition-all overflow-hidden"
+                            >
+                                <div className="w-8 h-8 rounded-full overflow-hidden">
+                                    {session.user?.image ? (
+                                        <Image src={session.user.image} alt="User" width={32} height={32} />
+                                    ) : (
+                                        <div className="w-full h-full bg-primary flex items-center justify-center text-xs">
+                                            {session.user?.name?.[0]}
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-xs font-bold uppercase tracking-wider">{session.user?.name?.split(' ')[0]}</span>
+                            </button>
+
+                            {isProfileOpen && (
+                                <div className="absolute right-0 mt-4 w-48 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-2 py-3 backdrop-blur-xl">
+                                    <Link
+                                        href="/profile"
+                                        onClick={() => setIsProfileOpen(false)}
+                                        className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl transition-all"
+                                    >
+                                        <UserIcon className="w-4 h-4" /> Profile
+                                    </Link>
+                                    <button
+                                        onClick={() => signOut()}
+                                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-xl transition-all mt-1"
+                                    >
+                                        <X className="w-4 h-4" /> Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <Link
+                            href="/auth/signin"
+                            className="bg-primary hover:bg-neon-blue text-white px-6 py-2 rounded-full font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(0,242,255,0.6)] uppercase text-sm tracking-widest"
+                        >
+                            Login
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Toggle */}
@@ -96,9 +143,32 @@ const Navbar = () => {
                         {link.name}
                     </Link>
                 ))}
-                <button className="bg-primary text-white px-10 py-4 rounded-full font-bold text-xl transition-all shadow-lg mt-4">
-                    BOOK NOW
-                </button>
+
+                {session ? (
+                    <div className="flex flex-col items-center gap-4">
+                        <Link
+                            href="/profile"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="text-2xl font-bold uppercase tracking-widest hover:text-primary"
+                        >
+                            Profile
+                        </Link>
+                        <button
+                            onClick={() => signOut()}
+                            className="text-2xl font-bold uppercase tracking-widest text-red-500"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                ) : (
+                    <Link
+                        href="/auth/signin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="bg-primary text-white px-10 py-4 rounded-full font-bold text-xl transition-all shadow-lg mt-4 uppercase tracking-widest"
+                    >
+                        Login
+                    </Link>
+                )}
             </div>
         </nav>
     );

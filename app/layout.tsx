@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   description: "Experience the next level of gaming with PS5, VR Arena, and Car Racing Simulators. Enjoy snacks and beverages in our premium gaming café.",
 };
 
+import { Providers } from "@/components/Providers";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +32,11 @@ export default function RootLayout({
         className={`${inter.variable} ${outfit.variable} font-gaming antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
-        {children}
+        <Providers>
+          <Navbar />
+          {children}
+          <Footer />
+        </Providers>
       </body>
     </html>
   );
