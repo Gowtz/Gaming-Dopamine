@@ -98,7 +98,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton
                                 asChild
-                                isActive={pathname === item.url || pathname?.startsWith(item.url + "/")}
+                                isActive={
+                                    pathname === item.url ||
+                                    (item.url !== "/admin" && pathname?.startsWith(item.url + "/"))
+                                }
                                 tooltip={item.title}
                             >
                                 <Link href={item.url}>

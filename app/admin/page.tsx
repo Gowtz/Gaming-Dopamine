@@ -5,10 +5,8 @@ import {
     DollarSign,
     TrendingUp,
     CalendarCheck,
-    Plus,
     Activity
 } from "lucide-react";
-import Link from "next/link";
 
 import {
     Card,
@@ -28,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import CreateSlotModal from "@/components/admin/CreateSlotModal";
 
 export default async function AdminOverview() {
     // Real stats from DB
@@ -59,22 +58,35 @@ export default async function AdminOverview() {
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat) => (
-                    <Card key={stat.label}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                {stat.label}
-                            </CardTitle>
-                            <stat.icon className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stat.value}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {stat.desc}
-                            </p>
-                        </CardContent>
-                    </Card>
-                ))}
+                {stats.map((stat) => {
+                    // Extract percentage and determine color
+                    const isPositive = stat.desc.startsWith('+');
+                    const isNegative = stat.desc.startsWith('-');
+                    const percentageMatch = stat.desc.match(/^([+-]\d+%)/);
+                    const percentage = percentageMatch ? percentageMatch[1] : '';
+                    const restOfDesc = stat.desc.replace(/^[+-]\d+%/, '').trim();
+
+                    return (
+                        <Card key={stat.label}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    {stat.label}
+                                </CardTitle>
+                                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stat.value}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    <span className={isPositive ? "text-green-600 font-medium" : isNegative ? "text-red-600 font-medium" : ""}>
+                                        {percentage}
+                                    </span>
+                                    {percentage && ' '}
+                                    {restOfDesc}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -139,12 +151,7 @@ export default async function AdminOverview() {
                             <CardDescription>Manage your café efficiently.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-2">
-                            <Button asChild className="w-full justify-start" size="lg">
-                                <Link href="/admin/slots/new">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    New Single Slot
-                                </Link>
-                            </Button>
+                            <CreateSlotModal />
                         </CardContent>
                     </Card>
 
