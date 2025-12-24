@@ -47,7 +47,7 @@ export default async function AdminOverview() {
     const stats = [
         { label: "Total Players", value: totalPlayers, icon: Users, desc: "+12% from last month" },
         { label: "Upcoming Bookings", value: activeBookings, icon: CalendarCheck, desc: "+5% from last week" },
-        { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, icon: DollarSign, desc: "+18% from last month" },
+        { label: "Total Revenue", value: `₹${totalRevenue.toFixed(2)}`, icon: DollarSign, desc: "+18% from last month" },
         { label: "Slot Utilization", value: `${slotUtilization}%`, icon: Gamepad2, desc: "-2% from last hour" },
     ];
 

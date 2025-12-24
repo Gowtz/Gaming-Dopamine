@@ -136,7 +136,7 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="price">Price ($)</Label>
+                        <Label htmlFor="price">Price (₹)</Label>
                         <Input
                             id="price"
                             type="number"
@@ -211,14 +211,12 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <input
-                        type="checkbox"
+                    <Checkbox
                         id="isPublic"
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         checked={formData.isPublic}
-                        onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
+                        onCheckedChange={(checked) => setFormData({ ...formData, isPublic: !!checked })}
                     />
-                    <Label htmlFor="isPublic">Make slot publicly visible</Label>
+                    <Label htmlFor="isPublic" className="cursor-pointer">Make slot publicly visible</Label>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">

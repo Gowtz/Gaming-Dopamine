@@ -24,7 +24,7 @@ export default function CreateSlotModal() {
                     New Slot
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto admin-theme">
                 <DialogHeader>
                     <DialogTitle>Create New Slot</DialogTitle>
                     <DialogDescription>

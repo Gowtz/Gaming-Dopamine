@@ -9,10 +9,10 @@ import { Coffee, Pizza, Zap, IceCream } from "lucide-react";
 gsap.registerPlugin(ScrollTrigger);
 
 const snacks = [
-    { name: "Neon Nachos", price: "$8.99", icon: <Pizza />, color: "text-orange-400" },
-    { name: "Cyber Burger", price: "$12.99", icon: <Zap />, color: "text-yellow-400" },
-    { name: "Mana Refresh", price: "$5.99", icon: <Coffee />, color: "text-blue-400" },
-    { name: "XP Ice Cream", price: "$6.99", icon: <IceCream />, color: "text-purple-400" },
+    { name: "Neon Nachos", price: "₹8.99", icon: <Pizza />, color: "text-orange-400" },
+    { name: "Cyber Burger", price: "₹12.99", icon: <Zap />, color: "text-yellow-400" },
+    { name: "Mana Refresh", price: "₹5.99", icon: <Coffee />, color: "text-blue-400" },
+    { name: "XP Ice Cream", price: "₹6.99", icon: <IceCream />, color: "text-purple-400" },
 ];
 
 const Snacks = () => {

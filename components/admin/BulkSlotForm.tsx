@@ -143,7 +143,7 @@ export default function BulkSlotForm() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="price">Price Per Slot ($)</Label>
+                            <Label htmlFor="price">Price Per Slot (₹)</Label>
                             <Input
                                 id="price"
                                 type="number"
