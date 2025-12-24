@@ -1,6 +1,23 @@
 import prisma from "@/lib/prisma";
-import { Clock, Calendar, User, Tag, MoreVertical, Trash2, CheckCircle, XCircle } from "lucide-react";
-import { updateBookingStatus, deleteBooking } from "@/lib/actions/admin-actions";
+import { Clock, Calendar, CheckCircle, XCircle, MoreVertical } from "lucide-react";
+import { updateBookingStatus } from "@/lib/actions/admin-actions";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface BookingListProps {
     searchParams: {
@@ -33,97 +50,105 @@ export default async function BookingList({ searchParams }: BookingListProps) {
 
     if (bookings.length === 0) {
         return (
-            <div className="py-20 text-center bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-                <p className="text-zinc-500">No bookings found matching your criteria.</p>
+            <div className="py-20 text-center border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground">No bookings found matching your criteria.</p>
             </div>
         );
     }
 
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "Upcoming": return <Badge className="bg-blue-500 hover:bg-blue-600">Upcoming</Badge>;
+            case "Completed": return <Badge className="bg-green-500 hover:bg-green-600">Completed</Badge>;
+            case "Cancelled": return <Badge variant="destructive">Cancelled</Badge>;
+            default: return <Badge variant="secondary">{status}</Badge>;
+        }
+    };
+
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-3">
-                <thead>
-                    <tr className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                        <th className="px-6 py-2">Player</th>
-                        <th className="px-6 py-2">Session Details</th>
-                        <th className="px-6 py-2">Date & Time</th>
-                        <th className="px-6 py-2">Status</th>
-                        <th className="px-6 py-2 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Session Details</TableHead>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
                     {bookings.map((booking) => (
-                        <tr key={booking.id} className="group bg-zinc-900/30 hover:bg-zinc-900/60 border border-zinc-800 transition-all">
-                            <td className="px-6 py-4 rounded-l-2xl border-y border-l border-zinc-800">
+                        <TableRow key={booking.id}>
+                            <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold">
-                                        {booking.user.name?.[0]}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-zinc-200">{booking.user.name}</p>
-                                        <p className="text-[10px] text-zinc-500 lowercase tracking-wider">{booking.user.email}</p>
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={booking.user.image || ""} />
+                                        <AvatarFallback>{booking.user.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{booking.user.name}</span>
+                                        <span className="text-xs text-muted-foreground">{booking.user.email}</span>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className="flex items-center gap-2">
-                                    <Tag className="w-3.5 h-3.5 text-indigo-400" />
-                                    <span className="text-sm font-medium">{booking.type}</span>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{booking.type}</span>
                                     {booking.slot && (
-                                        <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 capitalize">
-                                            {booking.slot.title || "Session"}
+                                        <span className="text-xs text-muted-foreground">
+                                            {booking.slot.title || "Standard Session"}
                                         </span>
                                     )}
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
+                            </TableCell>
+                            <TableCell>
                                 <div className="flex flex-col">
-                                    <div className="flex items-center gap-2 text-sm font-semibold">
-                                        <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                                         {new Date(booking.date).toLocaleDateString()}
                                     </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-1">
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Clock className="w-3.5 h-3.5" />
                                         {booking.duration} Minutes
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${booking.status === 'Upcoming' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                                        booking.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                            'bg-red-500/10 text-red-400 border-red-500/20'
-                                    }`}>
-                                    <div className={`w-1 h-1 rounded-full ${booking.status === 'Upcoming' ? 'bg-indigo-400' :
-                                            booking.status === 'Completed' ? 'bg-emerald-400' :
-                                                'bg-red-400'
-                                        }`} />
-                                    {booking.status}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 rounded-r-2xl border-y border-r border-zinc-800 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                    <form action={async () => {
-                                        "use server";
-                                        await updateBookingStatus(booking.id, "Completed");
-                                    }}>
-                                        <button className="p-2 hover:bg-emerald-500/10 text-zinc-500 hover:text-emerald-500 rounded-lg transition-colors" title="Mark Completed">
-                                            <CheckCircle className="w-4 h-4" />
-                                        </button>
-                                    </form>
-                                    <form action={async () => {
-                                        "use server";
-                                        await updateBookingStatus(booking.id, "Cancelled");
-                                    }}>
-                                        <button className="p-2 hover:bg-red-500/10 text-zinc-500 hover:text-red-500 rounded-lg transition-colors" title="Cancel Booking">
-                                            <XCircle className="w-4 h-4" />
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
+                            </TableCell>
+                            <TableCell>
+                                {getStatusBadge(booking.status)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <form action={async () => {
+                                            "use server";
+                                            await updateBookingStatus(booking.id, "Completed");
+                                        }}>
+                                            <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2">
+                                                <CheckCircle className="w-4 h-4" /> Mark Completed
+                                            </button>
+                                        </form>
+                                        <form action={async () => {
+                                            "use server";
+                                            await updateBookingStatus(booking.id, "Cancelled");
+                                        }}>
+                                            <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2 text-destructive">
+                                                <XCircle className="w-4 h-4" /> Cancel Booking
+                                            </button>
+                                        </form>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
                     ))}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

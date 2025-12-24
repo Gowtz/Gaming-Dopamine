@@ -1,7 +1,23 @@
 import prisma from "@/lib/prisma";
 import { Platform, SlotStatus } from "@prisma/client";
-import { Clock, Users, ArrowRight, MoreVertical, ShieldCheck, ShieldAlert, Wrench, Ban } from "lucide-react";
-import { toggleSlotVisibility, deleteSlot } from "@/lib/actions/slot-actions";
+import { Clock, Users, MoreVertical, ShieldCheck, ArrowRight, Wrench, Ban } from "lucide-react";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SlotListProps {
     searchParams: {
@@ -31,85 +47,90 @@ export default async function SlotList({ searchParams }: SlotListProps) {
 
     if (slots.length === 0) {
         return (
-            <div className="py-20 text-center bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-                <p className="text-zinc-500">No slots found matching your criteria.</p>
+            <div className="py-20 text-center border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground">No slots found matching your criteria.</p>
             </div>
         );
     }
 
-    const getStatusIcon = (status: SlotStatus) => {
+    const getStatusBadge = (status: SlotStatus) => {
         switch (status) {
-            case "AVAILABLE": return <ShieldCheck className="w-4 h-4 text-emerald-500" />;
-            case "BOOKED": return <ArrowRight className="w-4 h-4 text-blue-500" />;
-            case "MAINTENANCE": return <Wrench className="w-4 h-4 text-amber-500" />;
-            case "BLOCKED": return <Ban className="w-4 h-4 text-red-500" />;
+            case "AVAILABLE": return <Badge className="bg-green-500 hover:bg-green-600">Available</Badge>;
+            case "BOOKED": return <Badge variant="secondary">Booked</Badge>;
+            case "MAINTENANCE": return <Badge variant="destructive">Maintenance</Badge>;
+            case "BLOCKED": return <Badge variant="outline">Blocked</Badge>;
         }
     };
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-3">
-                <thead>
-                    <tr className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                        <th className="px-6 py-2">Platform / Title</th>
-                        <th className="px-6 py-2">Time Slot</th>
-                        <th className="px-6 py-2">Price</th>
-                        <th className="px-6 py-2">Capacity</th>
-                        <th className="px-6 py-2">Status</th>
-                        <th className="px-6 py-2">Visibility</th>
-                        <th className="px-6 py-2 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Platform / Title</TableHead>
+                        <TableHead>Time Slot</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Capacity</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Visibility</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
                     {slots.map((slot) => (
-                        <tr key={slot.id} className="group bg-zinc-900/30 hover:bg-zinc-900/60 border border-zinc-800 transition-all">
-                            <td className="px-6 py-4 rounded-l-2xl border-y border-l border-zinc-800">
+                        <TableRow key={slot.id}>
+                            <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${slot.type === 'PS5' ? 'bg-indigo-500/10 text-indigo-400' :
-                                            slot.type === 'VR' ? 'bg-purple-500/10 text-purple-400' :
-                                                'bg-amber-500/10 text-amber-400'
-                                        }`}>
+                                    <div className="p-2 rounded-md bg-muted">
                                         <Clock className="w-4 h-4" />
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-zinc-200">{slot.type}</p>
-                                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{slot.title || "Standard Session"}</p>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{slot.type}</span>
+                                        <span className="text-xs text-muted-foreground">{slot.title || "Standard Session"}</span>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className="text-sm font-semibold">
-                                    {slot.startTime} - {slot.endTime}
-                                    <p className="text-[10px] text-zinc-500 font-normal mt-1">{new Date(slot.date).toLocaleDateString()}</p>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{slot.startTime} - {slot.endTime}</span>
+                                    <span className="text-xs text-muted-foreground">{new Date(slot.date).toLocaleDateString()}</span>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800 text-sm font-bold">${slot.price.toFixed(2)}</td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
+                            </TableCell>
+                            <TableCell>${slot.price.toFixed(2)}</TableCell>
+                            <TableCell>
                                 <div className="flex items-center gap-2">
-                                    <Users className="w-3 h-3 text-zinc-500" />
-                                    <span className="text-xs font-medium">{slot.bookings.length} / {slot.maxPlayers}</span>
+                                    <Users className="w-4 h-4 text-muted-foreground" />
+                                    <span>{slot.bookings.length} / {slot.maxPlayers}</span>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className="flex items-center gap-2 bg-zinc-950/50 w-fit px-3 py-1.5 rounded-full border border-zinc-800">
-                                    {getStatusIcon(slot.status)}
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">{slot.status}</span>
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${slot.isPublic ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                                    {slot.isPublic ? 'Public' : 'Hidden'}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 rounded-r-2xl border-y border-r border-zinc-800 text-right">
-                                <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500 hover:text-white">
-                                    <MoreVertical className="w-4 h-4" />
-                                </button>
-                            </td>
-                        </tr>
+                            </TableCell>
+                            <TableCell>
+                                {getStatusBadge(slot.status)}
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant={slot.isPublic ? "outline" : "secondary"}>
+                                    {slot.isPublic ? "Public" : "Hidden"}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem>Edit details</DropdownMenuItem>
+                                        <DropdownMenuItem>View bookings</DropdownMenuItem>
+                                        <DropdownMenuItem className="text-destructive">Delete slot</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
                     ))}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

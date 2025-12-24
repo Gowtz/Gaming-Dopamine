@@ -3,6 +3,10 @@ import { Platform, SlotStatus } from "@prisma/client";
 import { Plus, Filter, Calendar, LayoutGrid, List as ListIcon } from "lucide-react";
 import Link from "next/link";
 import SlotList from "@/components/admin/SlotList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface SlotsPageProps {
     searchParams: {
@@ -12,21 +16,8 @@ interface SlotsPageProps {
     };
 }
 
-export default async function SlotsDashboard({ searchParams }: SlotsPageProps) {
-    const platforms = [
-        { label: "All Platforms", value: "" },
-        { label: "PS5", value: "PS5" },
-        { label: "VR", value: "VR" },
-        { label: "Racing Sim", value: "RACING_SIM" },
-    ];
-
-    const statuses = [
-        { label: "All Status", value: "" },
-        { label: "Available", value: "AVAILABLE" },
-        { label: "Booked", value: "BOOKED" },
-        { label: "Blocked", value: "BLOCKED" },
-        { label: "Maintenance", value: "MAINTENANCE" },
-    ];
+export default async function SlotsDashboard(props: { searchParams: Promise<SlotsPageProps["searchParams"]> }) {
+    const searchParams = await props.searchParams;
 
     // Stats
     const totalSlots = await prisma.slot.count();
@@ -38,82 +29,126 @@ export default async function SlotsDashboard({ searchParams }: SlotsPageProps) {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-extrabold font-outfit tracking-tighter">Slot Management</h1>
-                    <p className="text-zinc-500 mt-1">Create and monitor gaming sessions for your players.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Slot Management</h1>
+                    <p className="text-muted-foreground">Create and monitor gaming sessions for your players.</p>
                 </div>
                 <div className="flex gap-4">
-                    <Link
-                        href="/admin/slots/bulk"
-                        className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold rounded-xl border border-zinc-800 transition-all"
-                    >
-                        Bulk Create
-                    </Link>
-                    <Link
-                        href="/admin/slots/new"
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
-                    >
-                        <Plus className="w-5 h-5" />
-                        New Slot
-                    </Link>
+                    <Button asChild variant="secondary">
+                        <Link href="/admin/slots/bulk">
+                            Bulk Create
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/admin/slots/new">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Slot
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                    { label: "Total Slots", value: totalSlots, color: "indigo" },
-                    { label: "Available", value: availableSlots, color: "emerald" },
-                    { label: "Booked Sessions", value: bookedSlots, color: "blue" },
-                ].map((stat) => (
-                    <div key={stat.label} className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 w-32 h-32 bg-${stat.color}-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-${stat.color}-500/10 transition-all`}></div>
-                        <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{stat.label}</p>
-                        <p className="text-3xl font-bold mt-2 font-outfit">{stat.value}</p>
-                    </div>
-                ))}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Slots</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalSlots}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Available</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{availableSlots}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Booked Sessions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{bookedSlots}</div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Filters Bar */}
-            <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-2 text-zinc-500 mr-2">
-                    <Filter className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
-                </div>
+            <Card>
+                <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mr-2 border-r pr-4">
+                        <Filter className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-4 flex-1">
-                    <select
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none min-w-[150px]"
-                        defaultValue={searchParams.platform || ""}
-                    >
-                        {platforms.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                    </select>
+                    <div className="flex flex-1 flex-wrap items-center gap-4">
+                        {/* Note: Shadcn Select requires client-side state handling for full interactivity 
+                             if used as a controlled component, or simple usage here for UI structure. 
+                             Ideally filters should be a separate Client Component to handle router.push on change.
+                             For now, keeping input logic simple or wrapping in a Client Component is best.
+                             Given this is a Server Component page, we can use a Form or Links, 
+                             or standard inputs styled as Shadcn. 
+                             
+                             However, strict Shadcn replacement requires functional components. 
+                             I will use standard HTML select styled as Shadcn Input for simplicity 
+                             rendering server-side params logic, or just a form.
+                         */}
 
-                    <select
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none min-w-[150px]"
-                        defaultValue={searchParams.status || ""}
-                    >
-                        {statuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
+                        {/* To properly implement Filters with Shadcn Select, we need a client component.
+                             For the sake of visual consistency first, I'll use standard inputs with proper styling classes 
+                             OR wrap this section in a client component. 
+                             Let's stick to standard clean styling for now to avoid large refactors,
+                             but using Input component class. */}
 
-                    <input
-                        type="date"
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 [color-scheme:dark]"
-                        defaultValue={searchParams.date}
-                    />
-                </div>
+                        <form className="contents">
+                            <select
+                                name="platform"
+                                defaultValue={searchParams.platform || ""}
+                                className="flex h-10 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="">All Platforms</option>
+                                <option value="PS5">PS5</option>
+                                <option value="VR">VR</option>
+                                <option value="RACING_SIM">Racing Sim</option>
+                            </select>
 
-                <div className="flex items-center gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
-                    <button className="p-2 bg-zinc-800 text-white rounded-lg shadow-sm">
-                        <ListIcon className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors">
-                        <LayoutGrid className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors">
-                        <Calendar className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
+                            <select
+                                name="status"
+                                defaultValue={searchParams.status || ""}
+                                className="flex h-10 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="">All Status</option>
+                                <option value="AVAILABLE">Available</option>
+                                <option value="BOOKED">Booked</option>
+                                <option value="BLOCKED">Blocked</option>
+                                <option value="MAINTENANCE">Maintenance</option>
+                            </select>
+
+                            <Input
+                                type="date"
+                                name="date"
+                                defaultValue={searchParams.date}
+                                className="w-[180px]"
+                            />
+
+                            <Button type="submit" variant="secondary" size="sm">
+                                Apply
+                            </Button>
+                        </form>
+                    </div>
+
+                    <div className="flex items-center gap-1 border p-1 rounded-md bg-muted/50">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ListIcon className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                            <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Slot List */}
             <SlotList searchParams={searchParams} />

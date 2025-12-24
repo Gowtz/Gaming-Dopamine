@@ -4,7 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Platform } from "@prisma/client";
 import { bulkCreateSlots } from "@/lib/actions/slot-actions";
-import { Calendar, Clock, DollarSign, Users, Layers } from "lucide-react";
+import { Loader2, Layers } from "lucide-react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function BulkSlotForm() {
     const router = useRouter();
@@ -41,167 +54,141 @@ export default function BulkSlotForm() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Range and Frequency */}
-                <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Bulk Slot Generator</CardTitle>
+                    <CardDescription>Create multiple slots at once for a date range.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Start Date</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="date"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.startDate}
-                                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="startDate">Start Date</Label>
+                            <Input
+                                id="startDate"
+                                type="date"
+                                className="[color-scheme:dark]"
+                                value={formData.startDate}
+                                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">End Date</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="date"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.endDate}
-                                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="endDate">End Date</Label>
+                            <Input
+                                id="endDate"
+                                type="date"
+                                className="[color-scheme:dark]"
+                                value={formData.endDate}
+                                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                            />
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Frequency</label>
-                        <div className="grid grid-cols-2 gap-4">
-                            {[
-                                { label: "Every Day", value: "daily" },
-                                { label: "Weekdays Only", value: "weekdays" },
-                            ].map((f) => (
-                                <button
-                                    key={f.value}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, frequency: f.value as any })}
-                                    className={`py-4 px-4 rounded-xl border font-bold text-sm transition-all ${formData.frequency === f.value
-                                            ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20"
-                                            : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                                        }`}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="frequency">Frequency</Label>
+                            <Select
+                                value={formData.frequency}
+                                onValueChange={(value) => setFormData({ ...formData, frequency: value as "daily" | "weekdays" })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="daily">Every Day</SelectItem>
+                                    <SelectItem value="weekdays">Weekdays Only</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="platform">Platform</Label>
+                            <Select
+                                value={formData.type}
+                                onValueChange={(value) => setFormData({ ...formData, type: value as Platform })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select platform" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PS5">PlayStation 5</SelectItem>
+                                    <SelectItem value="VR">VR Arena</SelectItem>
+                                    <SelectItem value="RACING_SIM">Racing Simulator</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Platform</label>
-                        <div className="grid grid-cols-3 gap-4">
-                            {["PS5", "VR", "RACING_SIM"].map((p) => (
-                                <button
-                                    key={p}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, type: p as Platform })}
-                                    className={`py-3 px-4 rounded-xl border font-bold text-xs transition-all ${formData.type === p
-                                            ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20"
-                                            : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                                        }`}
-                                >
-                                    {p.replace('_', ' ')}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Pricing and Capacity */}
-                <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Start Time</label>
-                            <div className="relative">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="time"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.startTime}
-                                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="startTime">Start Time</Label>
+                            <Input
+                                id="startTime"
+                                type="time"
+                                className="[color-scheme:dark]"
+                                value={formData.startTime}
+                                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">End Time</label>
-                            <div className="relative">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="time"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.endTime}
-                                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="endTime">End Time</Label>
+                            <Input
+                                id="endTime"
+                                type="time"
+                                className="[color-scheme:dark]"
+                                value={formData.endTime}
+                                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                            />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Price Per Slot ($)</label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="number"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                                />
-                            </div>
+                            <Label htmlFor="price">Price Per Slot ($)</Label>
+                            <Input
+                                id="price"
+                                type="number"
+                                min="0"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                            />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Max Players</label>
-                            <div className="relative">
-                                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="number"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit"
-                                    value={formData.maxPlayers}
-                                    onChange={(e) => setFormData({ ...formData, maxPlayers: Number(e.target.value) })}
-                                />
-                            </div>
+                            <Label htmlFor="maxPlayers">Capacity</Label>
+                            <Input
+                                id="maxPlayers"
+                                type="number"
+                                min="1"
+                                value={formData.maxPlayers}
+                                onChange={(e) => setFormData({ ...formData, maxPlayers: Number(e.target.value) })}
+                            />
                         </div>
                     </div>
 
-                    <div className="p-6 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl">
+                    <div className="rounded-lg border bg-muted/50 p-4">
                         <div className="flex gap-4">
-                            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400">
-                                <Layers className="w-5 h-5" />
+                            <div className="p-2 bg-primary/10 rounded-md text-primary h-fit">
+                                <Layers className="w-4 h-4" />
                             </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-indigo-300">Bulk Generation Tip</h4>
-                                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                            <div className="space-y-1">
+                                <h4 className="text-sm font-medium">Bulk Generation Info</h4>
+                                <p className="text-xs text-muted-foreground">
                                     This will generate one slot per day for the selected platform within the specified date range. All slots will use the same time and price.
                                 </p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div className="flex justify-end gap-4 pt-8 border-t border-zinc-800">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
-                    className="px-8 py-4 bg-zinc-950 text-zinc-500 font-bold rounded-2xl hover:text-white transition-colors"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-50"
-                >
-                    {loading ? "Generating..." : "Generate Bulk Slots"}
-                </button>
-            </div>
+                    <div className="flex justify-end gap-4 pt-4">
+                        <Button type="button" variant="outline" onClick={() => router.back()}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Generate Bulk Slots
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </form>
     );
 }

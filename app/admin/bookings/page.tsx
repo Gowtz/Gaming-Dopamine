@@ -1,6 +1,9 @@
 import prisma from "@/lib/prisma";
 import { Filter, Search, Calendar as CalendarIcon, Download } from "lucide-react";
 import BookingList from "@/components/admin/BookingList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface BookingsPageProps {
     searchParams: {
@@ -10,20 +13,8 @@ interface BookingsPageProps {
     };
 }
 
-export default async function AdminBookingsPage({ searchParams }: BookingsPageProps) {
-    const statuses = [
-        { label: "All Status", value: "" },
-        { label: "Upcoming", value: "Upcoming" },
-        { label: "Completed", value: "Completed" },
-        { label: "Cancelled", value: "Cancelled" },
-    ];
-
-    const types = [
-        { label: "All Types", value: "" },
-        { label: "PS5", value: "PS5" },
-        { label: "VR", value: "VR" },
-        { label: "Racing", value: "Racing" },
-    ];
+export default async function AdminBookingsPage(props: { searchParams: Promise<BookingsPageProps["searchParams"]> }) {
+    const searchParams = await props.searchParams;
 
     const totalBookings = await prisma.booking.count();
     const completedBookings = await prisma.booking.count({ where: { status: "Completed" } });
@@ -34,70 +25,98 @@ export default async function AdminBookingsPage({ searchParams }: BookingsPagePr
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-extrabold font-outfit tracking-tighter">Booking History</h1>
-                    <p className="text-zinc-500 mt-1">Review and manage all player reservations.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Booking History</h1>
+                    <p className="text-muted-foreground">Review and manage all player reservations.</p>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold rounded-xl border border-zinc-800 transition-all">
-                    <Download className="w-5 h-5" />
+                <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
                     Export CSV
-                </button>
+                </Button>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                    { label: "Total Bookings", value: totalBookings, color: "indigo" },
-                    { label: "Completed", value: completedBookings, color: "emerald" },
-                    { label: "Upcoming", value: upcomingBookings, color: "blue" },
-                ].map((stat) => (
-                    <div key={stat.label} className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
-                        <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{stat.label}</p>
-                        <p className="text-3xl font-bold mt-2 font-outfit">{stat.value}</p>
-                    </div>
-                ))}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalBookings}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{completedBookings}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{upcomingBookings}</div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Filters Bar */}
-            <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-2 text-zinc-500 mr-2 border-r border-zinc-800 pr-6">
-                    <Filter className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4 flex-1">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-                        <input
-                            type="text"
-                            placeholder="Search by player name or email..."
-                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-                        />
+            <Card>
+                <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mr-2 border-r pr-4">
+                        <Filter className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
                     </div>
 
-                    <select
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-300 focus:outline-none appearance-none min-w-[140px]"
-                        defaultValue={searchParams.type || ""}
-                    >
-                        {types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
+                    <div className="flex flex-1 flex-wrap items-center gap-4">
+                        <form className="contents">
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search players..."
+                                    className="pl-10"
+                                />
+                            </div>
 
-                    <select
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-300 focus:outline-none appearance-none min-w-[140px]"
-                        defaultValue={searchParams.status || ""}
-                    >
-                        {statuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
+                            <select
+                                name="type"
+                                defaultValue={searchParams.type || ""}
+                                className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="">All Types</option>
+                                <option value="PS5">PS5</option>
+                                <option value="VR">VR</option>
+                                <option value="Racing">Racing</option>
+                            </select>
 
-                    <div className="relative">
-                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-                        <input
-                            type="date"
-                            className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-300 focus:outline-none [color-scheme:dark]"
-                            defaultValue={searchParams.date}
-                        />
+                            <select
+                                name="status"
+                                defaultValue={searchParams.status || ""}
+                                className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="">All Status</option>
+                                <option value="Upcoming">Upcoming</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+
+                            <Input
+                                type="date"
+                                name="date"
+                                defaultValue={searchParams.date}
+                                className="w-[160px]"
+                            />
+
+                            <Button type="submit" variant="secondary" size="sm">
+                                Apply
+                            </Button>
+                        </form>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             {/* Booking List */}
             <BookingList searchParams={searchParams} />

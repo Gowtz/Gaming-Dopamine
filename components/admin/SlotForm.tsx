@@ -4,7 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Platform } from "@prisma/client";
 import { createSlot } from "@/lib/actions/slot-actions";
-import { Calendar, Clock, DollarSign, Users, Tag } from "lucide-react";
+import { Loader2 } from "lucide-react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SlotForm() {
     const router = useRouter();
@@ -40,145 +52,118 @@ export default function SlotForm() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Basic Info */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Session Title (Optional)</label>
-                        <div className="relative">
-                            <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                            <input
-                                type="text"
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create New Slot</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="title">Session Title</Label>
+                            <Input
+                                id="title"
                                 placeholder="e.g. Weekend Special"
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             />
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Platform / Platform</label>
-                        <div className="grid grid-cols-3 gap-4">
-                            {["PS5", "VR", "RACING_SIM"].map((p) => (
-                                <button
-                                    key={p}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, type: p as Platform })}
-                                    className={`py-3 px-4 rounded-xl border font-bold text-xs transition-all ${formData.type === p
-                                            ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20"
-                                            : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                                        }`}
-                                >
-                                    {p.replace('_', ' ')}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Price ($)</label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="number"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                                />
-                            </div>
+                            <Label htmlFor="platform">Platform</Label>
+                            <Select
+                                value={formData.type}
+                                onValueChange={(value) => setFormData({ ...formData, type: value as Platform })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select platform" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PS5">PlayStation 5</SelectItem>
+                                    <SelectItem value="VR">VR Arena</SelectItem>
+                                    <SelectItem value="RACING_SIM">Racing Simulator</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Max Players</label>
-                            <div className="relative">
-                                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="number"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit"
-                                    value={formData.maxPlayers}
-                                    onChange={(e) => setFormData({ ...formData, maxPlayers: Number(e.target.value) })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Schedule */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Session Date</label>
-                        <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                            <input
-                                type="date"
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                        <div className="space-y-2">
+                            <Label htmlFor="price">Price ($)</Label>
+                            <Input
+                                id="price"
+                                type="number"
+                                min="0"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="maxPlayers">Capacity</Label>
+                            <Input
+                                id="maxPlayers"
+                                type="number"
+                                min="1"
+                                value={formData.maxPlayers}
+                                onChange={(e) => setFormData({ ...formData, maxPlayers: Number(e.target.value) })}
                             />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Start Time</label>
-                            <div className="relative">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="time"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.startTime}
-                                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="date">Date</Label>
+                            <Input
+                                id="date"
+                                type="date"
+                                className="[color-scheme:dark]"
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">End Time</label>
-                            <div className="relative">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input
-                                    type="time"
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-11 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-outfit [color-scheme:dark]"
-                                    value={formData.endTime}
-                                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                                />
-                            </div>
+                            <Label htmlFor="startTime">Start Time</Label>
+                            <Input
+                                id="startTime"
+                                type="time"
+                                className="[color-scheme:dark]"
+                                value={formData.startTime}
+                                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="endTime">End Time</Label>
+                            <Input
+                                id="endTime"
+                                type="time"
+                                className="[color-scheme:dark]"
+                                value={formData.endTime}
+                                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                            />
                         </div>
                     </div>
 
-                    <label className="flex items-center gap-3 p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl cursor-pointer group">
-                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${formData.isPublic ? "bg-indigo-600 border-indigo-500" : "border-zinc-700 group-hover:border-zinc-600"
-                            }`}>
-                            {formData.isPublic && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                        </div>
+                    <div className="flex items-center space-x-2">
                         <input
                             type="checkbox"
-                            className="hidden"
+                            id="isPublic"
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
                             checked={formData.isPublic}
                             onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
                         />
-                        <span className="text-sm font-semibold">Make slot public (Bookable by players)</span>
-                    </label>
-                </div>
-            </div>
+                        <Label htmlFor="isPublic">Make slot publicly visible</Label>
+                    </div>
 
-            <div className="flex justify-end gap-4 pt-8 border-t border-zinc-800">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
-                    className="px-8 py-4 bg-zinc-950 text-zinc-500 font-bold rounded-2xl hover:text-white transition-colors"
-                >
-                    Discard Changes
-                </button>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
-                >
-                    {loading ? "Creating..." : "Generate Slot"}
-                </button>
-            </div>
+                    <div className="flex justify-end gap-4 pt-4">
+                        <Button type="button" variant="outline" onClick={() => router.back()}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Create Slot
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </form>
     );
 }

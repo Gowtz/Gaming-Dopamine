@@ -1,7 +1,24 @@
 import prisma from "@/lib/prisma";
-import { User, Shield, ShieldCheck, Mail, Calendar, MoreVertical, UserPlus, UserMinus } from "lucide-react";
-import { updateUserRole, deleteUser } from "@/lib/actions/admin-actions";
+import { User, ShieldCheck, Mail, UserPlus, UserMinus, MoreVertical } from "lucide-react";
+import { updateUserRole } from "@/lib/actions/admin-actions";
 import { Role } from "@prisma/client";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default async function PlayerList() {
     const users = await prisma.user.findMany({
@@ -12,95 +29,110 @@ export default async function PlayerList() {
         }
     });
 
+    const getRoleBadge = (role: string) => {
+        if (role === 'ADMIN') {
+            return (
+                <Badge variant="default" className="gap-1">
+                    <ShieldCheck className="w-3 h-3" /> Admin
+                </Badge>
+            );
+        }
+        return (
+            <Badge variant="secondary" className="gap-1">
+                <User className="w-3 h-3" /> User
+            </Badge>
+        );
+    };
+
+    const getMembershipBadge = (tier?: string) => {
+        switch (tier) {
+            case 'Gold': return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-black">Gold</Badge>;
+            case 'Silver': return <Badge className="bg-gray-400 hover:bg-gray-500 text-black">Silver</Badge>;
+            default: return <Badge variant="outline">Bronze</Badge>;
+        }
+    };
+
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-y-3">
-                <thead>
-                    <tr className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                        <th className="px-6 py-2">Player Info</th>
-                        <th className="px-6 py-2">Role</th>
-                        <th className="px-6 py-2">Membership Status</th>
-                        <th className="px-6 py-2">Last Activity</th>
-                        <th className="px-6 py-2 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Player Info</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Membership Status</TableHead>
+                        <TableHead>Last Activity</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
                     {users.map((user) => (
-                        <tr key={user.id} className="group bg-zinc-900/30 hover:bg-zinc-900/60 border border-zinc-800 transition-all">
-                            <td className="px-6 py-4 rounded-l-2xl border-y border-l border-zinc-800">
+                        <TableRow key={user.id}>
+                            <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center border border-zinc-700 overflow-hidden">
-                                        {user.image ? (
-                                            <img src={user.image} alt={user.name || ""} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-sm font-bold">{user.name?.[0]}</span>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-zinc-200">{user.name}</p>
-                                        <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                                    <Avatar className="h-10 w-10 border border-input">
+                                        <AvatarImage src={user.image || ""} />
+                                        <AvatarFallback>{user.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{user.name}</span>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <Mail className="w-3 h-3" />
                                             {user.email}
                                         </div>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${user.role === 'ADMIN' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-                                    }`}>
-                                    {user.role === 'ADMIN' ? <ShieldCheck className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                                    {user.role}
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${user.membership?.tier === 'Gold' ? 'bg-amber-400' :
-                                            user.membership?.tier === 'Silver' ? 'bg-zinc-300' :
-                                                'bg-orange-400'
-                                        }`} />
-                                    <span className="text-xs font-semibold">{user.membership?.tier || "Bronze"}</span>
-                                </div>
-                            </td>
-                            <td className="px-6 py-4 border-y border-zinc-800">
+                            </TableCell>
+                            <TableCell>
+                                {getRoleBadge(user.role)}
+                            </TableCell>
+                            <TableCell>
+                                {getMembershipBadge(user.membership?.tier)}
+                            </TableCell>
+                            <TableCell>
                                 {user.bookings[0] ? (
                                     <div className="flex flex-col">
-                                        <span className="text-xs font-medium">Last Booking</span>
-                                        <span className="text-[10px] text-zinc-500 italic">{new Date(user.bookings[0].date).toLocaleDateString()}</span>
+                                        <span className="text-sm font-medium">Last Booking</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(user.bookings[0].date).toLocaleDateString()}</span>
                                     </div>
                                 ) : (
-                                    <span className="text-[10px] text-zinc-600 italic">No activity yet</span>
+                                    <span className="text-xs text-muted-foreground italic">No activity yet</span>
                                 )}
-                            </td>
-                            <td className="px-6 py-4 rounded-r-2xl border-y border-r border-zinc-800 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                    {user.role === 'USER' ? (
-                                        <form action={async () => {
-                                            "use server";
-                                            await updateUserRole(user.id, Role.ADMIN);
-                                        }}>
-                                            <button className="p-2 hover:bg-indigo-500/10 text-zinc-500 hover:text-indigo-400 rounded-lg transition-colors" title="Promote to Admin">
-                                                <UserPlus className="w-4 h-4" />
-                                            </button>
-                                        </form>
-                                    ) : (
-                                        <form action={async () => {
-                                            "use server";
-                                            await updateUserRole(user.id, Role.USER);
-                                        }}>
-                                            <button className="p-2 hover:bg-zinc-500/10 text-zinc-500 hover:text-zinc-300 rounded-lg transition-colors" title="Demote to User">
-                                                <UserMinus className="w-4 h-4" />
-                                            </button>
-                                        </form>
-                                    )}
-                                    <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500">
-                                        <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {user.role === 'USER' ? (
+                                            <form action={async () => {
+                                                "use server";
+                                                await updateUserRole(user.id, Role.ADMIN);
+                                            }}>
+                                                <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2">
+                                                    <UserPlus className="w-4 h-4" /> Promote to Admin
+                                                </button>
+                                            </form>
+                                        ) : (
+                                            <form action={async () => {
+                                                "use server";
+                                                await updateUserRole(user.id, Role.USER);
+                                            }}>
+                                                <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2">
+                                                    <UserMinus className="w-4 h-4" /> Demote to User
+                                                </button>
+                                            </form>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
                     ))}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

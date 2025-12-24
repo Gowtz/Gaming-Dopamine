@@ -4,24 +4,43 @@ import {
     Gamepad2,
     DollarSign,
     TrendingUp,
-    ArrowUpRight,
-    ArrowDownRight,
-    CalendarCheck
+    CalendarCheck,
+    Plus,
+    Activity
 } from "lucide-react";
 import Link from "next/link";
+
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default async function AdminOverview() {
     // Real stats from DB
     const totalPlayers = await prisma.user.count();
     const activeBookings = await prisma.booking.count({ where: { status: "Upcoming" } });
-    const totalRevenue = 1250.50; // Mock revenue since we don't have payments yet
+    const totalRevenue = 1250.50; // Mock revenue
     const slotUtilization = 68; // Mock percentage
 
     const stats = [
-        { label: "Total Players", value: totalPlayers, icon: Users, trend: "+12%", up: true },
-        { label: "Upcoming Bookings", value: activeBookings, icon: CalendarCheck, trend: "+5%", up: true },
-        { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, icon: DollarSign, trend: "+18%", up: true },
-        { label: "Slot Utilization", value: `${slotUtilization}%`, icon: Gamepad2, trend: "-2%", up: false },
+        { label: "Total Players", value: totalPlayers, icon: Users, desc: "+12% from last month" },
+        { label: "Upcoming Bookings", value: activeBookings, icon: CalendarCheck, desc: "+5% from last week" },
+        { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, icon: DollarSign, desc: "+18% from last month" },
+        { label: "Slot Utilization", value: `${slotUtilization}%`, icon: Gamepad2, desc: "-2% from last hour" },
     ];
 
     const recentBookings = await prisma.booking.findMany({
@@ -31,110 +50,127 @@ export default async function AdminOverview() {
     });
 
     return (
-        <div className="space-y-10">
+        <div className="flex flex-col gap-8">
             {/* Header */}
             <div>
-                <h1 className="text-4xl font-extrabold font-outfit tracking-tighter">Dashboard Overview</h1>
-                <p className="text-zinc-500 mt-1">Quick insights into your gaming café performance.</p>
+                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <p className="text-muted-foreground">Overview of your gaming café performance.</p>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat) => (
-                    <div key={stat.label} className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 bg-zinc-800 rounded-2xl group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-all">
-                                <stat.icon className="w-6 h-6" />
-                            </div>
-                            <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${stat.up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                                }`}>
-                                {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                {stat.trend}
-                            </div>
-                        </div>
-                        <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{stat.label}</p>
-                        <p className="text-3xl font-bold mt-1 font-outfit">{stat.value}</p>
-                    </div>
+                    <Card key={stat.label}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                {stat.label}
+                            </CardTitle>
+                            <stat.icon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stat.value}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {stat.desc}
+                            </p>
+                        </CardContent>
+                    </Card>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 {/* Recent Activity */}
-                <div className="lg:col-span-2 bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-bold font-outfit tracking-tight">Recent Bookings</h2>
-                        <Link href="/admin/bookings" className="text-indigo-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-300 transition-colors">View All</Link>
-                    </div>
+                <Card className="col-span-4">
+                    <CardHeader>
+                        <CardTitle>Recent Bookings</CardTitle>
+                        <CardDescription>
+                            Latest reservations made by players.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[250px]">Player</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Duration</TableHead>
+                                    <TableHead className="text-right">Date</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentBookings.length > 0 ? (
+                                    recentBookings.map((booking) => (
+                                        <TableRow key={booking.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={booking.user.image || ""} />
+                                                        <AvatarFallback>{booking.user.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <span>{booking.user.name}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{booking.user.email}</span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{booking.type}</TableCell>
+                                            <TableCell>{booking.duration}m</TableCell>
+                                            <TableCell className="text-right">
+                                                {new Date(booking.date).toLocaleDateString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">
+                                            No recent bookings.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
 
-                    <div className="space-y-4">
-                        {recentBookings.length > 0 ? (
-                            recentBookings.map((booking) => (
-                                <div key={booking.id} className="flex items-center justify-between p-4 bg-zinc-800/30 border border-white/5 rounded-2xl">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs">
-                                            {booking.user.name?.[0]}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold">{booking.user.name}</p>
-                                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{booking.type} • {booking.duration}m</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-bold">{new Date(booking.date).toLocaleDateString()}</p>
-                                        <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Confimed</span>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-zinc-500 text-center py-12 italic">No recent bookings found.</p>
-                        )}
-                    </div>
-                </div>
+                {/* Quick Actions & Status */}
+                <div className="col-span-3 space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Quick Actions</CardTitle>
+                            <CardDescription>Manage your café efficiently.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-2">
+                            <Button asChild className="w-full justify-start" size="lg">
+                                <Link href="/admin/slots/new">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    New Single Slot
+                                </Link>
+                            </Button>
+                            <Button asChild variant="secondary" className="w-full justify-start" size="lg">
+                                <Link href="/admin/slots/bulk">
+                                    <TrendingUp className="mr-2 h-4 w-4" />
+                                    Generate Bulk Slots
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
 
-                {/* Quick Actions */}
-                <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-8 shadow-2xl shadow-indigo-600/20">
-                        <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
-                        <div className="space-y-3">
-                            <Link
-                                href="/admin/slots/new"
-                                className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group"
-                            >
-                                <span className="text-sm font-bold">New Single Slot</span>
-                                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                            </Link>
-                            <Link
-                                href="/admin/slots/bulk"
-                                className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group"
-                            >
-                                <span className="text-sm font-bold">Generate Bulk</span>
-                                <TrendingUp className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                        </div>
-                    </div>
-
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-                        <h3 className="text-lg font-bold mb-4">Admin Status</h3>
-                        <div className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>System Status</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-zinc-500 text-sm">System Status</span>
-                                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-500">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                                    Operational
-                                </span>
+                                <span className="text-sm font-medium">Database</span>
+                                <Badge variant="default" className="bg-green-500 hover:bg-green-600">Operational</Badge>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-zinc-500 text-sm">Prisma Engine</span>
-                                <span className="text-xs font-bold text-zinc-300">v5.22.0</span>
+                                <span className="text-sm font-medium">Prisma Engine</span>
+                                <span className="text-xs text-muted-foreground">v5.22.0</span>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>
     );
 }
-
-const Plus = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-);
