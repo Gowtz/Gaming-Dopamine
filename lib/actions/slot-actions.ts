@@ -7,24 +7,34 @@ import { Platform, SlotStatus } from "@prisma/client";
 export async function createSlot(data: {
     title?: string;
     type: Platform;
-    date: Date;
     startTime: string;
     endTime: string;
     price: number;
     maxPlayers: number;
     isPublic: boolean;
+    gameIds?: string[];
 }) {
     const duration = calculateDuration(data.startTime, data.endTime);
+    const { gameIds, ...slotData } = data;
 
     const slot = await prisma.slot.create({
         data: {
-            ...data,
+            ...slotData,
             duration,
+            supportedGames: gameIds ? {
+                connect: gameIds.map(id => ({ id }))
+            } : undefined
         },
     });
 
     revalidatePath("/admin/slots");
     return slot;
+}
+
+export async function getGames() {
+    return await prisma.game.findMany({
+        orderBy: { title: "asc" }
+    });
 }
 
 export async function bulkCreateSlots(data: {

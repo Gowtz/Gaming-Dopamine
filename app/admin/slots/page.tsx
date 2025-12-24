@@ -1,7 +1,7 @@
+import CreateSlotModal from "@/components/admin/CreateSlotModal";
 import prisma from "@/lib/prisma";
 import { Platform, SlotStatus } from "@prisma/client";
-import { Plus, Filter, Calendar, LayoutGrid, List as ListIcon } from "lucide-react";
-import Link from "next/link";
+import { Filter, Calendar, LayoutGrid, List as ListIcon } from "lucide-react";
 import SlotList from "@/components/admin/SlotList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,12 +33,7 @@ export default async function SlotsDashboard(props: { searchParams: Promise<Slot
                     <p className="text-muted-foreground">Create and monitor gaming sessions for your players.</p>
                 </div>
                 <div className="flex gap-4">
-                    <Button asChild>
-                        <Link href="/admin/slots/new">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Slot
-                        </Link>
-                    </Button>
+                    <CreateSlotModal />
                 </div>
             </div>
 

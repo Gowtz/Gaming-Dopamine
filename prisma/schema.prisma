@@ -75,11 +75,22 @@ model Preferences {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Game {
+  id        String   @id @default(cuid())
+  title     String
+  image     String?
+  genre     String?
+  platform  Platform
+  slots     Slot[]   @relation("SlotGames")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Slot {
   id            String      @id @default(cuid())
   title         String?
   type          Platform
-  date          DateTime
+  // date removed - slots are now templates
   startTime     String      // Format: "17:00"
   endTime       String      // Format: "18:00"
   duration      Int         // in minutes
@@ -87,6 +98,7 @@ model Slot {
   maxPlayers    Int         @default(1)
   status        SlotStatus  @default(AVAILABLE)
   isPublic      Boolean     @default(true)
+  supportedGames Game[]     @relation("SlotGames")
   bookings      Booking[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
