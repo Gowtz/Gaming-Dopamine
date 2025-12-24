@@ -154,21 +154,6 @@ export default async function AdminOverview() {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>System Status</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Database</span>
-                                <Badge variant="default" className="bg-green-500 hover:bg-green-600">Operational</Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Prisma Engine</span>
-                                <span className="text-xs text-muted-foreground">v5.22.0</span>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </div>
