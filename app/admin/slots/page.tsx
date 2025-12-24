@@ -33,11 +33,6 @@ export default async function SlotsDashboard(props: { searchParams: Promise<Slot
                     <p className="text-muted-foreground">Create and monitor gaming sessions for your players.</p>
                 </div>
                 <div className="flex gap-4">
-                    <Button asChild variant="secondary">
-                        <Link href="/admin/slots/bulk">
-                            Bulk Create
-                        </Link>
-                    </Button>
                     <Button asChild>
                         <Link href="/admin/slots/new">
                             <Plus className="mr-2 h-4 w-4" />

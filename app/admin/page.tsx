@@ -145,12 +145,6 @@ export default async function AdminOverview() {
                                     New Single Slot
                                 </Link>
                             </Button>
-                            <Button asChild variant="secondary" className="w-full justify-start" size="lg">
-                                <Link href="/admin/slots/bulk">
-                                    <TrendingUp className="mr-2 h-4 w-4" />
-                                    Generate Bulk Slots
-                                </Link>
-                            </Button>
                         </CardContent>
                     </Card>
 
