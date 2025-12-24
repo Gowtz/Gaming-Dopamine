@@ -1,9 +1,11 @@
 import prisma from "@/lib/prisma";
 import { Filter, Search, Calendar as CalendarIcon, Download } from "lucide-react";
 import BookingList from "@/components/admin/BookingList";
+import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { revalidatePath } from "next/cache";
 
 interface BookingsPageProps {
     searchParams: {
@@ -16,9 +18,13 @@ interface BookingsPageProps {
 export default async function AdminBookingsPage(props: { searchParams: Promise<BookingsPageProps["searchParams"]> }) {
     const searchParams = await props.searchParams;
 
-    const totalBookings = await prisma.booking.count();
-    const completedBookings = await prisma.booking.count({ where: { status: "Completed" } });
-    const upcomingBookings = await prisma.booking.count({ where: { status: "Upcoming" } });
+    const [totalBookings, completedBookings, upcomingBookings, users, slots] = await Promise.all([
+        prisma.booking.count(),
+        prisma.booking.count({ where: { status: "Completed" } }),
+        prisma.booking.count({ where: { status: "Upcoming" } }),
+        prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
+        prisma.slot.findMany({ where: { status: "AVAILABLE" } })
+    ]);
 
     return (
         <div className="space-y-8">
@@ -28,10 +34,13 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                     <h1 className="text-3xl font-bold tracking-tight">Booking History</h1>
                     <p className="text-muted-foreground">Review and manage all player reservations.</p>
                 </div>
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export CSV
-                </Button>
+                <div className="flex items-center gap-3">
+                    <OfflineBookingModal users={users} slots={slots} />
+                    <Button variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export CSV
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}

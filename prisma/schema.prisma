@@ -50,6 +50,7 @@ model User {
   wallet        Wallet?
   membership    Membership?
   stats         Stats?
+  isBlocked     Boolean   @default(false)
 }
 
 enum Role {
@@ -119,16 +120,23 @@ enum SlotStatus {
 
 model Booking {
   id          String   @id @default(cuid())
-  userId      String
+  userId      String?
   slotId      String?
   date        DateTime
+  startTime   String?  // Format: "17:00"
   duration    Int      // in minutes
   type        String   // Legacy field, keeping for compatibility
   status      String   // Upcoming, Completed, Cancelled
   createdAt   DateTime @default(now())
   
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   slot        Slot?    @relation(fields: [slotId], references: [id])
+  source      BookingSource @default(ONLINE)
+}
+
+enum BookingSource {
+  ONLINE
+  OFFLINE
 }
 
 model Wallet {
@@ -142,9 +150,11 @@ model Wallet {
 model Membership {
   id        String   @id @default(cuid())
   userId    String   @unique
-  tier      String   @default("Bronze") // Bronze, Silver, Gold
-  points    Int      @default(0)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier          String   @default("Bronze") // Bronze, Silver, Gold
+  points        Int      @default(0)
+  isSubscriber  Boolean  @default(false)
+  expiresAt     DateTime?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Stats {
@@ -153,4 +163,11 @@ model Stats {
   totalPlaytime   Int      @default(0) // in minutes
   mostPlayedGame  String?
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SystemSettings {
+  id              String   @id @default("global")
+  siteName        String   @default("Gaming Dopamine")
+  maintenanceMode Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
 }

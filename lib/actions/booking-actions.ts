@@ -28,3 +28,16 @@ export async function extendBooking(bookingId: string, additionalMinutes: number
         return { success: false, error: "Failed to extend booking" };
     }
 }
+
+export async function deleteBooking(bookingId: string) {
+    try {
+        await prisma.booking.delete({
+            where: { id: bookingId },
+        });
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting booking:", error);
+        return { success: false, error: "Failed to delete booking" };
+    }
+}

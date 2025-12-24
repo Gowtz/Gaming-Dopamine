@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
-import { Clock, Calendar, CheckCircle, XCircle, MoreVertical } from "lucide-react";
-import { updateBookingStatus } from "@/lib/actions/admin-actions";
+import { Clock, Calendar, CheckCircle, XCircle, MoreVertical, Trash2, Globe, Laptop } from "lucide-react";
+import { updateBookingStatus, deleteBooking } from "@/lib/actions/admin-actions";
 import {
     Table,
     TableBody,
@@ -39,14 +39,15 @@ export default async function BookingList({ searchParams }: BookingListProps) {
         };
     }
 
+    // @ts-ignore - Prisma types may be out of sync
     const bookings = await prisma.booking.findMany({
         where,
-        orderBy: { date: "desc" },
+        orderBy: { createdAt: "desc" },
         include: {
             user: true,
             slot: true
         },
-    });
+    }) as any[];
 
     if (bookings.length === 0) {
         return (
@@ -63,6 +64,21 @@ export default async function BookingList({ searchParams }: BookingListProps) {
             case "Cancelled": return <Badge variant="destructive">Cancelled</Badge>;
             default: return <Badge variant="secondary">{status}</Badge>;
         }
+    };
+
+    const getSourceBadge = (source: string) => {
+        if (source === "OFFLINE") {
+            return (
+                <Badge variant="outline" className="gap-1 text-orange-500 border-orange-500/20">
+                    <Laptop className="w-3 h-3" /> Offline
+                </Badge>
+            );
+        }
+        return (
+            <Badge variant="outline" className="gap-1 text-blue-500 border-blue-500/20">
+                <Globe className="w-3 h-3" /> Online
+            </Badge>
+        );
     };
 
     return (
@@ -115,7 +131,10 @@ export default async function BookingList({ searchParams }: BookingListProps) {
                                 </div>
                             </TableCell>
                             <TableCell>
-                                {getStatusBadge(booking.status)}
+                                <div className="flex flex-col gap-1">
+                                    {getStatusBadge(booking.status)}
+                                    {getSourceBadge(booking.source)}
+                                </div>
                             </TableCell>
                             <TableCell className="text-right">
                                 <DropdownMenu>
@@ -140,6 +159,14 @@ export default async function BookingList({ searchParams }: BookingListProps) {
                                         }}>
                                             <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2 text-destructive">
                                                 <XCircle className="w-4 h-4" /> Cancel Booking
+                                            </button>
+                                        </form>
+                                        <form action={async () => {
+                                            "use server";
+                                            await deleteBooking(booking.id);
+                                        }}>
+                                            <button className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex items-center gap-2 text-destructive">
+                                                <Trash2 className="w-4 h-4" /> Delete Booking
                                             </button>
                                         </form>
                                     </DropdownMenuContent>

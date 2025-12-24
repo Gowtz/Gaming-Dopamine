@@ -55,6 +55,11 @@ const data = {
             icon: Users,
         },
         {
+            title: "Games",
+            url: "/admin/games",
+            icon: Gamepad2,
+        },
+        {
             title: "Settings",
             url: "/admin/settings",
             icon: Settings,

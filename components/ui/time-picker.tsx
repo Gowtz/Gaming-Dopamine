@@ -43,6 +43,12 @@ export function TimePicker({ value, onChange, placeholder = "Select time" }: Tim
         return `${hour24.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     };
 
+    const getDisplayTime = () => {
+        if (!value) return placeholder;
+        const { hours, minutes, period } = parse24Hour(value);
+        return `${hours}:${minutes} ${period}`;
+    };
+
     const { hours, minutes, period } = parse24Hour(value);
 
     const handleHourChange = (newHour: string) => {

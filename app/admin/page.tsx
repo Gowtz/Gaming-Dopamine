@@ -28,6 +28,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CreateSlotModal from "@/components/admin/CreateSlotModal";
 import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
+import PlayerSearchModal from "@/components/admin/PlayerSearchModal";
+import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
+import { UserPlus } from "lucide-react";
 
 export default async function AdminOverview() {
     // Real stats from DB
@@ -35,6 +38,11 @@ export default async function AdminOverview() {
     const activeBookings = await prisma.booking.count({ where: { status: "Upcoming" } });
     const totalRevenue = 1250.50; // Mock revenue
     const slotUtilization = 68; // Mock percentage
+
+    const [users, slots] = await Promise.all([
+        prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
+        prisma.slot.findMany({ where: { status: "AVAILABLE" } })
+    ]);
 
     const stats = [
         { label: "Total Players", value: totalPlayers, icon: Users, desc: "+12% from last month" },
@@ -144,12 +152,12 @@ export default async function AdminOverview() {
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-2">
                                                     <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={booking.user.image || ""} />
-                                                        <AvatarFallback>{booking.user.name?.[0]}</AvatarFallback>
+                                                        <AvatarImage src={booking.user?.image || ""} />
+                                                        <AvatarFallback>{booking.user?.name?.[0] || "G"}</AvatarFallback>
                                                     </Avatar>
                                                     <div className="flex flex-col">
-                                                        <span>{booking.user.name}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{booking.user.email}</span>
+                                                        <span>{booking.user?.name || "Guest Player"}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{booking.user?.email || "Offline Booking"}</span>
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -179,8 +187,18 @@ export default async function AdminOverview() {
                             <CardTitle>Quick Actions</CardTitle>
                             <CardDescription>Manage your café efficiently.</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex flex-col gap-2">
-                            <CreateSlotModal />
+                        <CardContent className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2 w-full">
+                                <PlayerSearchModal
+                                    users={users}
+                                    trigger={
+                                        <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white gap-2">
+                                            <UserPlus className="w-4 h-4" /> Create Subscriber
+                                        </Button>
+                                    }
+                                />
+                            </div>
+                            <OfflineBookingModal users={users} slots={slots} />
                         </CardContent>
                     </Card>
 
