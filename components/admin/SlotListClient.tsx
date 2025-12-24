@@ -88,23 +88,23 @@ export default function SlotListClient({ slots }: SlotListClientProps) {
             case "PS5":
                 return {
                     icon: Gamepad2,
-                    gradient: "from-blue-500/20 to-purple-500/20",
-                    iconColor: "text-blue-400",
-                    bgColor: "bg-blue-500/10"
+                    gradient: "from-zinc-500/10 to-zinc-500/5",
+                    iconColor: "text-zinc-400",
+                    bgColor: "bg-zinc-500/10"
                 };
             case "VR":
                 return {
                     icon: ShieldCheck,
-                    gradient: "from-cyan-500/20 to-pink-500/20",
-                    iconColor: "text-cyan-400",
-                    bgColor: "bg-cyan-500/10"
+                    gradient: "from-zinc-500/10 to-zinc-500/5",
+                    iconColor: "text-zinc-400",
+                    bgColor: "bg-zinc-500/10"
                 };
             case "RACING_SIM":
                 return {
                     icon: Activity,
-                    gradient: "from-orange-500/20 to-red-500/20",
-                    iconColor: "text-orange-400",
-                    bgColor: "bg-orange-500/10"
+                    gradient: "from-zinc-500/10 to-zinc-500/5",
+                    iconColor: "text-zinc-400",
+                    bgColor: "bg-zinc-500/10"
                 };
         }
     };
@@ -113,7 +113,12 @@ export default function SlotListClient({ slots }: SlotListClientProps) {
         <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {slots.map((slot) => {
-                    const config = getPlatformConfig(slot.type);
+                    const config = getPlatformConfig(slot.type) || {
+                        icon: Gamepad2,
+                        gradient: "from-zinc-500/20 to-zinc-500/20",
+                        iconColor: "text-zinc-400",
+                        bgColor: "bg-zinc-500/10"
+                    };
                     const Icon = config.icon;
                     const currentOwner = slot.bookings.find(b => b.status === "Upcoming");
                     const isOffline = slot.status === "MAINTENANCE";

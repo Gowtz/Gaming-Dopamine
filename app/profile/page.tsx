@@ -219,7 +219,7 @@ export default async function ProfilePage() {
                                                 </div>
                                             </div>
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${booking.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                    booking.status === 'Upcoming' ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-800 text-zinc-500'
+                                                booking.status === 'Upcoming' ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-800 text-zinc-500'
                                                 }`}>
                                                 {booking.status}
                                             </span>

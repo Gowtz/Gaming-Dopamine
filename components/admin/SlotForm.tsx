@@ -214,7 +214,7 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
                     <input
                         type="checkbox"
                         id="isPublic"
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         checked={formData.isPublic}
                         onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
                     />

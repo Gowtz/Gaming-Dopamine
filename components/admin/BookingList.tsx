@@ -58,8 +58,8 @@ export default async function BookingList({ searchParams }: BookingListProps) {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case "Upcoming": return <Badge className="bg-blue-500 hover:bg-blue-600">Upcoming</Badge>;
-            case "Completed": return <Badge className="bg-green-500 hover:bg-green-600">Completed</Badge>;
+            case "Upcoming": return <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">Upcoming</Badge>;
+            case "Completed": return <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20">Completed</Badge>;
             case "Cancelled": return <Badge variant="destructive">Cancelled</Badge>;
             default: return <Badge variant="secondary">{status}</Badge>;
         }
