@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CreateSlotModal from "@/components/admin/CreateSlotModal";
+import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
 
 export default async function AdminOverview() {
     // Real stats from DB
@@ -47,6 +48,34 @@ export default async function AdminOverview() {
         orderBy: { date: 'desc' },
         include: { user: true }
     });
+
+    // Get currently active bookings (happening right now)
+    const now = new Date();
+    const activeSlots = await prisma.booking.findMany({
+        where: {
+            status: "Upcoming",
+        },
+        include: {
+            user: {
+                select: {
+                    name: true,
+                    email: true,
+                }
+            }
+        },
+        orderBy: {
+            createdAt: 'desc'
+        }
+    }).then(bookings =>
+        // Filter to only include bookings that are currently active
+        bookings.filter(booking => {
+            const startTime = new Date(booking.date);
+            const endTime = new Date(booking.date);
+            endTime.setMinutes(endTime.getMinutes() + booking.duration);
+            return startTime <= now && endTime > now;
+        })
+    );
+
 
     return (
         <div className="flex flex-col gap-8">
@@ -152,6 +181,17 @@ export default async function AdminOverview() {
                         </CardHeader>
                         <CardContent className="flex flex-col gap-2">
                             <CreateSlotModal />
+                        </CardContent>
+                    </Card>
+
+                    {/* Active Slots */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Active Slots</CardTitle>
+                            <CardDescription>Currently running sessions.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ActiveSlotsList slots={activeSlots} />
                         </CardContent>
                     </Card>
 

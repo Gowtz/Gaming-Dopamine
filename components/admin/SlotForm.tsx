@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Platform } from "@prisma/client";
-import { createSlot, getGames } from "@/lib/actions/slot-actions";
+import { createSlot, updateSlot, getGames } from "@/lib/actions/slot-actions";
 import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -16,28 +16,44 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SimpleTimePicker } from "@/components/ui/simple-time-picker";
 
+interface Slot {
+    id: string;
+    title: string | null;
+    type: Platform;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    price: number;
+    maxPlayers: number;
+    status: string;
+    isPublic: boolean;
+    supportedGames?: Array<{ id: string }>;
+}
+
 interface SlotFormProps {
+    slot?: Slot;
     onSuccess?: () => void;
 }
 
-export default function SlotForm({ onSuccess }: SlotFormProps = {}) {
+export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [games, setGames] = useState<Array<{ id: string; title: string; platform: Platform }>>([]);
-    const [selectedGames, setSelectedGames] = useState<string[]>([]);
+    const [selectedGames, setSelectedGames] = useState<string[]>(
+        slot?.supportedGames?.map(g => g.id) || []
+    );
     const [formData, setFormData] = useState({
-        title: "",
-        type: "PS5" as Platform,
-        startTime: "10:00",
-        endTime: "22:00",
-        price: 0,
-        maxPlayers: 1,
-        isPublic: true,
+        title: slot?.title || "",
+        type: (slot?.type as Platform) || "PS5",
+        startTime: slot?.startTime || "10:00",
+        endTime: slot?.endTime || "22:00",
+        price: slot?.price || 0,
+        maxPlayers: slot?.maxPlayers || 1,
+        isPublic: slot?.isPublic ?? true,
     });
 
     useEffect(() => {
@@ -56,12 +72,25 @@ export default function SlotForm({ onSuccess }: SlotFormProps = {}) {
         e.preventDefault();
         setLoading(true);
         try {
-            await createSlot({
+            const data = {
                 ...formData,
                 price: Number(formData.price),
                 maxPlayers: Number(formData.maxPlayers),
-                gameIds: selectedGames.length > 0 ? selectedGames : undefined,
-            });
+                gameIds: selectedGames.length > 0 ? selectedGames : [],
+            };
+
+            if (slot?.id) {
+                const { gameIds, ...updateData } = data;
+                await updateSlot(slot.id, {
+                    ...updateData,
+                    supportedGames: {
+                        set: gameIds.map(id => ({ id }))
+                    }
+                });
+            } else {
+                await createSlot(data);
+            }
+
             if (onSuccess) {
                 onSuccess();
             } else {
@@ -112,6 +141,7 @@ export default function SlotForm({ onSuccess }: SlotFormProps = {}) {
                             id="price"
                             type="number"
                             min="0"
+                            step="0.01"
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                         />
@@ -192,12 +222,12 @@ export default function SlotForm({ onSuccess }: SlotFormProps = {}) {
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                    <Button type="button" variant="outline" onClick={() => onSuccess ? onSuccess() : router.back()}>
                         Cancel
                     </Button>
                     <Button type="submit" disabled={loading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Slot
+                        {slot?.id ? "Update Slot" : "Create Slot"}
                     </Button>
                 </div>
             </div>

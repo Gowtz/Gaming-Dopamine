@@ -125,6 +125,7 @@ model Booking {
   duration    Int      // in minutes
   type        String   // Legacy field, keeping for compatibility
   status      String   // Upcoming, Completed, Cancelled
+  createdAt   DateTime @default(now())
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   slot        Slot?    @relation(fields: [slotId], references: [id])

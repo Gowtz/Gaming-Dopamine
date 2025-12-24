@@ -103,6 +103,15 @@ export async function toggleSlotVisibility(id: string, isPublic: boolean) {
     revalidatePath("/admin/slots");
 }
 
+export async function toggleSlotStatus(id: string, status: SlotStatus) {
+    await prisma.slot.update({
+        where: { id },
+        data: { status },
+    });
+    revalidatePath("/admin/slots");
+    revalidatePath("/admin");
+}
+
 function calculateDuration(start: string, end: string) {
     const [startH, startM] = start.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
