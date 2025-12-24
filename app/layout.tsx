@@ -18,8 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "@/components/Providers";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import LayoutWrapper from "@/components/LayoutWrapper";
 
 export default function RootLayout({
   children,
@@ -33,9 +32,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          <Navbar />
-          {children}
-          <Footer />
+          <LayoutWrapper>{children}</LayoutWrapper>
         </Providers>
       </body>
     </html>
