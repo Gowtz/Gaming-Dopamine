@@ -37,17 +37,28 @@ export async function createOfflineBooking(
 
     if (!slot) throw new Error("Slot not found");
 
-    const bookingStartTimeStr = startTime || slot.startTime;
+    const bookingStartTimeStr = startTime || (source === BookingSource.OFFLINE ? format(new Date(), "HH:mm") : slot.startTime);
     const bookingDuration = duration || slot.duration;
 
     const parseTimeToMinutes = (timeStr: string) => {
-        const formatStr = timeStr.includes(" ") ? "hh:mm a" : "HH:mm";
+        if (!timeStr) return 0;
         try {
-            const date = parse(timeStr, formatStr, new Date());
-            return date.getHours() * 60 + date.getMinutes();
-        } catch (e) {
-            const [h, m] = timeStr.split(':').map(Number);
+            // Try 12h format first
+            if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) {
+                const date = parse(timeStr.toUpperCase(), "hh:mm a", new Date());
+                if (!isNaN(date.getTime())) return date.getHours() * 60 + date.getMinutes();
+            }
+            // Try 24h format
+            const date = parse(timeStr, "HH:mm", new Date());
+            if (!isNaN(date.getTime())) return date.getHours() * 60 + date.getMinutes();
+
+            // Fallback: manual split
+            const clean = timeStr.replace(/[^0-9:]/g, '');
+            const [h, m] = clean.split(':').map(Number);
             return (h || 0) * 60 + (m || 0);
+        } catch (e) {
+            console.error(`Failed to parse time: ${timeStr}`, e);
+            return 0;
         }
     };
 
@@ -55,6 +66,9 @@ export async function createOfflineBooking(
     const slotEndVal = parseTimeToMinutes(slot.endTime);
     const bookingStartVal = parseTimeToMinutes(bookingStartTimeStr);
     const bookingEndVal = bookingStartVal + bookingDuration;
+
+    const serverNow = new Date();
+    console.log(`[BOOKING DEBUG] Server Time: ${format(serverNow, "HH:mm")}, Attempt: ${bookingStartTimeStr} (${bookingStartVal}m), Duration: ${bookingDuration}m`);
 
     if (!force && (bookingStartVal < slotStartVal || bookingEndVal > slotEndVal)) {
         throw new Error(`Booking must fit within slot window (${slot.startTime} - ${slot.endTime})`);
@@ -68,26 +82,38 @@ export async function createOfflineBooking(
                 gte: new Date(new Date().setHours(0, 0, 0, 0)),
                 lt: new Date(new Date().setHours(23, 59, 59, 999)),
             },
-            status: "Upcoming",
         },
     });
 
     for (const b of existingBookings) {
+        if (b.status !== "Upcoming") continue;
+
         const bStartVal = parseTimeToMinutes(b.startTime as string);
         const bEndVal = bStartVal + b.duration;
 
         // Check for overlap [start, end]
         // True overlap: (StartA < EndB) && (EndA > StartB)
         if (bookingStartVal < bEndVal && bookingEndVal > bStartVal) {
-            throw new Error(`Time conflict with existing booking (${b.startTime} - ${b.duration} mins)`);
+            console.warn(`[CONFLICT] ID: ${b.id}, Attempt: ${bookingStartVal}-${bookingEndVal}, Existing: ${bStartVal}-${bEndVal}`);
+            if (!force) {
+                const conflictTime = b.startTime || "another session";
+                throw new Error(`Time conflict with session at ${conflictTime} (${b.duration} mins)`);
+            }
         }
     }
+    // Even when you selected "Start @ {time}", the server was saving the session's main date field as "Right Now". Because the system looks at that date to decide if a session is active, it would immediately mark the booking as "In Progress" because "Now" is technically within the start/end window of a session you just created.
+
+
+    // Final Date calculation: Combine today's date with the chosen start time
+    const finalDate = new Date();
+    const [h, m] = [Math.floor(bookingStartVal / 60), bookingStartVal % 60];
+    finalDate.setHours(h, m, 0, 0);
 
     await (prisma.booking as any).create({
         data: {
             userId: (userId || null) as any,
             slotId,
-            date: new Date(),
+            date: finalDate,
             startTime: bookingStartTimeStr,
             duration: bookingDuration,
             type: slot.type,

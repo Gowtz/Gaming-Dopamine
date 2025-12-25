@@ -63,34 +63,8 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
 
     const selectedSlot = slots.find(s => s.id === selectedSlotId);
 
-    // Filter bookings for selected slot
-    const slotBookings = existingBookings.filter(b => b.slotId === selectedSlotId);
-
-    // Calculate next available time based on end of current/upcoming sessions
-    const getNextAvailableTime = () => {
-        if (!selectedSlot || slotBookings.length === 0) return null;
-
-        const now = new Date();
-        // Find bookings that haven't ended yet
-        const activeOrUpcoming = slotBookings.filter(b => {
-            const end = addMinutes(new Date(b.date), b.duration);
-            return isAfter(end, now);
-        });
-
-        if (activeOrUpcoming.length === 0) return null;
-
-        // Get the end time of the latest booking
-        const latestBooking = activeOrUpcoming.reduce((prev, current) => {
-            const prevEnd = addMinutes(new Date(prev.date), prev.duration);
-            const currEnd = addMinutes(new Date(current.date), current.duration);
-            return isAfter(currEnd, prevEnd) ? current : prev;
-        });
-
-        const endTime = addMinutes(new Date(latestBooking.date), latestBooking.duration);
-        return format(endTime, "hh:mm a");
-    };
-
-    const nextTimeStr = getNextAvailableTime();
+    // Filter bookings for selected slot and only active/upcoming ones
+    const slotBookings = existingBookings.filter(b => b.slotId === selectedSlotId && b.status === "Upcoming");
 
     // Helper to Convert HH:mm A to absolute Date for today
     const timeToDate = (timeStr: string) => {
@@ -105,6 +79,41 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
             return null;
         }
     }
+
+    // Calculate next available time based on end of current/upcoming sessions
+    const getNextAvailableTime = () => {
+        if (!selectedSlot || slotBookings.length === 0) return null;
+
+        const now = new Date();
+        // Find bookings that haven't ended yet
+        const activeOrUpcoming = slotBookings.filter(b => {
+            const start = timeToDate(b.startTime);
+            if (!start) return false;
+            const end = addMinutes(start, b.duration);
+            return isAfter(end, now);
+        });
+
+        if (activeOrUpcoming.length === 0) return null;
+
+        // Get the end time of the latest booking
+        const latestBooking = activeOrUpcoming.reduce((prev, current) => {
+            const prevStart = timeToDate(prev.startTime);
+            const currStart = timeToDate(current.startTime);
+            if (!prevStart || !currStart) return current;
+
+            const prevEnd = addMinutes(prevStart, prev.duration);
+            const currEnd = addMinutes(currStart, current.duration);
+            return isAfter(currEnd, prevEnd) ? current : prev;
+        });
+
+        const start = timeToDate(latestBooking.startTime);
+        if (!start) return null;
+        const endTime = addMinutes(start, latestBooking.duration);
+        return format(endTime, "hh:mm a");
+    };
+
+    const nextTimeStr = getNextAvailableTime();
+
 
     const checkConflict = (checkStart?: Date) => {
         if (!selectedSlotId) return null;
@@ -127,12 +136,10 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
         const end = addMinutes(start, customDuration ? parseInt(customDuration) : duration);
 
         for (const b of slotBookings) {
-            const bStart = new Date(b.date);
-            bStart.setSeconds(0);
-            bStart.setMilliseconds(0);
+            const bStart = timeToDate(b.startTime);
+            if (!bStart) continue;
+
             const bEnd = addMinutes(bStart, b.duration);
-            bEnd.setSeconds(0);
-            bEnd.setMilliseconds(0);
 
             // True overlap check (exclusive of boundaries)
             // (StartA < EndB) && (EndA > StartB)
@@ -174,13 +181,15 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
     const nowConflict = checkConflict(new Date());
 
     const handleCreateBooking = async () => {
-        if (!selectedSlotId || currentConflict) return;
+        if (!selectedSlotId || (currentConflict && !overrideTiming)) return;
         setLoading(true);
         try {
             const finalDuration = customDuration ? parseInt(customDuration) : duration;
             let finalStartTime: string | undefined = undefined;
 
-            if (startTimeType === "after") {
+            if (startTimeType === "now") {
+                finalStartTime = format(new Date(), "HH:mm");
+            } else if (startTimeType === "after") {
                 finalStartTime = nextTimeStr || undefined;
             } else if (startTimeType === "custom") {
                 finalStartTime = customStartTime;
@@ -372,18 +381,14 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                         </div>
                     </div>
 
-                    {currentConflict && (
-                        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-600 text-xs">
-                            <Clock className="h-4 w-4 shrink-0 mt-0.5" />
-                            <p>{currentConflict}</p>
-                        </div>
-                    )}
-
-                    {timingWarning && (
+                    {(currentConflict || timingWarning) && (
                         <div className="flex flex-col gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
                             <div className="flex items-start gap-2 text-amber-600 text-xs text-balance">
                                 <Clock className="h-4 w-4 shrink-0 mt-0.5" />
-                                <p>{timingWarning}. Do you want to proceed anyway?</p>
+                                <div className="space-y-1">
+                                    <p className="font-semibold">{currentConflict || timingWarning}</p>
+                                    <p>Do you want to proceed anyway? This will force the booking.</p>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Switch
@@ -392,7 +397,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                                     onCheckedChange={setOverrideTiming}
                                 />
                                 <Label htmlFor="override-timing" className="text-xs font-medium cursor-pointer">
-                                    Override Slot Timing
+                                    Override Constraints (Dangerous)
                                 </Label>
                             </div>
                         </div>
@@ -401,7 +406,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                     {!showConfirm ? (
                         <Button
                             className="w-full"
-                            disabled={!selectedSlotId || loading || !!currentConflict || (!!timingWarning && !overrideTiming)}
+                            disabled={!selectedSlotId || loading || (!!(currentConflict || timingWarning) && !overrideTiming)}
                             onClick={() => setShowConfirm(true)}
                         >
                             Review Booking
