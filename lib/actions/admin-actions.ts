@@ -21,7 +21,7 @@ export async function deleteBooking(id: string) {
     revalidatePath("/admin");
 }
 
-export async function createOfflineBooking(userId: string | null, slotId: string, duration?: number, startTime?: string) {
+export async function createOfflineBooking(userId: string | null, slotId: string, duration?: number, startTime?: string, source: BookingSource = BookingSource.OFFLINE) {
     const slot = await prisma.slot.findUnique({
         where: { id: slotId },
     });
@@ -85,7 +85,7 @@ export async function createOfflineBooking(userId: string | null, slotId: string
             duration: bookingDuration,
             type: slot.type,
             status: "Upcoming",
-            source: BookingSource.OFFLINE,
+            source: source,
         },
     });
 

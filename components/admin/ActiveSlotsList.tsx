@@ -304,23 +304,25 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Payment Method</Label>
-                                <Select
-                                    value={extensionData.paymentMethod}
-                                    onValueChange={(val: any) => setExtensionData({ ...extensionData, paymentMethod: val })}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select method" />
-                                    </SelectTrigger>
-                                    <SelectContent className="admin-theme">
-                                        <SelectItem value="OFFLINE_CASH">Offline Cash</SelectItem>
-                                        {slots.find(s => s.id === extensionData.bookingId)?.userId && (
-                                            <SelectItem value="SUBSCRIPTION_HOURS">Subscription Hours</SelectItem>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {slots.find(s => s.id === extensionData.bookingId)?.source !== "OFFLINE" && (
+                                <div className="space-y-2">
+                                    <Label>Payment Method</Label>
+                                    <Select
+                                        value={extensionData.paymentMethod}
+                                        onValueChange={(val: any) => setExtensionData({ ...extensionData, paymentMethod: val })}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select method" />
+                                        </SelectTrigger>
+                                        <SelectContent className="admin-theme">
+                                            <SelectItem value="OFFLINE_CASH">Offline Cash</SelectItem>
+                                            {slots.find(s => s.id === extensionData.bookingId)?.userId && (
+                                                <SelectItem value="SUBSCRIPTION_HOURS">Subscription Hours</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
                             {/* Conflict Warning */}
                             {conflictData && (
