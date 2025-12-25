@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Plus, Trash2 } from "lucide-react";
+import { Clock, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { extendBooking, deleteBooking } from "@/lib/actions/booking-actions";
 import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -85,6 +87,16 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
         paymentMethod: "OFFLINE_CASH" | "SUBSCRIPTION_HOURS";
         minutes: number;
     } | null>(null);
+    const [conflictData, setConflictData] = useState<{ user: any } | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [override, setOverride] = useState(false);
+
+    const resetState = () => {
+        setExtensionData(null);
+        setConflictData(null);
+        setErrorMsg(null);
+        setOverride(false);
+    };
 
     const calculateEndTime = (startDate: Date, duration: number) => {
         const endDate = new Date(startDate);
@@ -124,25 +136,43 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
     }
 
     const handleExtend = async () => {
-        if (!extensionData || !session?.user) return;
+        if (!extensionData) return;
+
+        // Log attempt
+        console.log("Attempting extension:", { extensionData, override, sessionUser: session?.user });
+
         setExtending(extensionData.bookingId);
+
         try {
-            const adminId = (session.user as any).id || "admin";
+            // Use safe access for adminId, fallback to "admin" if session not fully hydrated
+            const adminId = (session?.user as any)?.id || "admin";
+
             const result = await extendBooking(
                 extensionData.bookingId,
                 extensionData.minutes,
                 adminId,
-                extensionData.reason,
-                extensionData.paymentMethod
+                "Extended via Admin UI", // Default reason
+                extensionData.paymentMethod,
+                override // Force logic
             );
+
+            console.log("Extension result:", result);
+
             if (result.success) {
                 router.refresh();
-                setExtensionData(null);
+                resetState();
             } else {
-                alert(result.error);
+                // Handle conflict or error
+                if (result.conflict) {
+                    setConflictData({ user: result.conflict.user });
+                } else {
+                    setErrorMsg(result.error || "Unknown error");
+                }
+                // Don't close dialog, let user override
             }
         } catch (error) {
             console.error("Failed to extend booking:", error);
+            setErrorMsg("Unexpected error occurred.");
         } finally {
             setExtending(null);
         }
@@ -246,46 +276,104 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
             </div>
 
             {/* Extension Dialog */}
-            <Dialog open={!!extensionData} onOpenChange={(open) => !open && setExtensionData(null)}>
+            <Dialog open={!!extensionData} onOpenChange={(open) => !open && resetState()}>
                 <DialogContent className="admin-theme sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Extend Booking</DialogTitle>
                         <DialogDescription>
-                            Add time to this session. Requires a valid reason and payment method.
+                            Add time to this session.
                         </DialogDescription>
                     </DialogHeader>
                     {extensionData && (
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Reason</Label>
-                                <Input
-                                    id="reason"
-                                    className="col-span-3"
-                                    placeholder="e.g. Requested more time"
-                                    value={extensionData.reason}
-                                    onChange={(e) => setExtensionData({ ...extensionData, reason: e.target.value })}
-                                />
+                        <div className="grid gap-6 py-4">
+                            {/* Duration Chips */}
+                            <div className="space-y-2">
+                                <Label>Duration</Label>
+                                <div className="flex gap-2">
+                                    {[30, 60, 120].map((mins) => (
+                                        <Button
+                                            key={mins}
+                                            size="sm"
+                                            variant={extensionData.minutes === mins ? "default" : "outline"}
+                                            onClick={() => setExtensionData({ ...extensionData, minutes: mins })}
+                                            className="flex-1"
+                                        >
+                                            +{mins === 60 ? "1 hr" : mins === 120 ? "2 hrs" : "30 mins"}
+                                        </Button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Payment</Label>
+
+                            <div className="space-y-2">
+                                <Label>Payment Method</Label>
                                 <Select
                                     value={extensionData.paymentMethod}
                                     onValueChange={(val: any) => setExtensionData({ ...extensionData, paymentMethod: val })}
                                 >
-                                    <SelectTrigger className="col-span-3">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Select method" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="admin-theme">
                                         <SelectItem value="OFFLINE_CASH">Offline Cash</SelectItem>
-                                        <SelectItem value="SUBSCRIPTION_HOURS">Subscription Hours</SelectItem>
+                                        {slots.find(s => s.id === extensionData.bookingId)?.userId && (
+                                            <SelectItem value="SUBSCRIPTION_HOURS">Subscription Hours</SelectItem>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {/* Conflict Warning */}
+                            {conflictData && (
+                                <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 space-y-3">
+                                    <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <span>Slot Blocked</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-background/50 p-2 rounded border border-border/50">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={conflictData.user?.image || ""} />
+                                            <AvatarFallback>{conflictData.user?.name?.[0] || "?"}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="text-xs">
+                                            <div className="font-medium">{conflictData.user?.name || "Upcoming Guest"}</div>
+                                            <div className="text-muted-foreground">Conflicts with this extension</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="override" className="text-sm font-medium">Override Conflict?</Label>
+                                        <Switch
+                                            id="override"
+                                            checked={!!override}
+                                            onCheckedChange={setOverride}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {/* Generic Error Warning if just text */}
+                            {!conflictData && errorMsg && (
+                                <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
+                                    <div className="text-sm text-destructive font-medium">{errorMsg}</div>
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="override-generic" className="text-sm font-medium">Force Extend?</Label>
+                                        <Switch
+                                            id="override-generic"
+                                            checked={!!override}
+                                            onCheckedChange={setOverride}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     <DialogFooter>
-                        <Button type="submit" onClick={handleExtend} disabled={!extensionData?.reason || extending !== null}>
-                            {extending ? "Extending..." : "Confirm Extension"}
+                        <Button
+                            type="submit"
+                            onClick={handleExtend}
+                            disabled={extending !== null || ((!!conflictData || !!errorMsg) && !override)}
+                            variant={conflictData || errorMsg ? "destructive" : "default"}
+                        >
+                            {extending ? "Extending..." : (conflictData || errorMsg) ? "Confirm Override" : "Confirm Extension"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

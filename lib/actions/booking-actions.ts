@@ -10,7 +10,8 @@ export async function extendBooking(
     additionalMinutes: number,
     adminId: string,
     reason: string,
-    paymentMethod: "OFFLINE_CASH" | "SUBSCRIPTION_HOURS"
+    paymentMethod: "OFFLINE_CASH" | "SUBSCRIPTION_HOURS",
+    force: boolean = false
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -43,30 +44,39 @@ export async function extendBooking(
                 },
                 status: "Upcoming",
             },
+            include: { user: true }
         });
 
-        for (const b of otherBookings) {
-            const [bStartH, bStartM] = (b.startTime as string).split(':').map(Number);
-            const bStartVal = bStartH * 60 + bStartM;
-            const bEndVal = bStartVal + b.duration;
+        if (!force) {
+            for (const b of otherBookings) {
+                const [bStartH, bStartM] = (b.startTime as string).split(':').map(Number);
+                const bStartVal = bStartH * 60 + bStartM;
+                const bEndVal = bStartVal + b.duration;
 
-            if (
-                (bookingStartVal >= bStartVal && bookingStartVal < bEndVal) ||
-                (bookingEndVal > bStartVal && bookingEndVal <= bEndVal) ||
-                (bookingStartVal <= bStartVal && bookingEndVal >= bEndVal)
-            ) {
-                return { success: false, error: "Time conflict: Extension overlaps with another booking." };
+                if (
+                    (bookingStartVal >= bStartVal && bookingStartVal < bEndVal) ||
+                    (bookingEndVal > bStartVal && bookingEndVal <= bEndVal) ||
+                    (bookingStartVal <= bStartVal && bookingEndVal >= bEndVal)
+                ) {
+                    return {
+                        success: false,
+                        error: "Time conflict",
+                        conflict: {
+                            user: b.user
+                        }
+                    };
+                }
             }
-        }
 
-        // 2. Bound Check: Must still fit in slot if applicable
-        if (booking.slotId) {
-            const slot = await prisma.slot.findUnique({ where: { id: booking.slotId } });
-            if (slot) {
-                const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number);
-                const slotEndVal = slotEndH * 60 + slotEndM;
-                if (bookingEndVal > slotEndVal) {
-                    return { success: false, error: `Extension exceeds slot window (${slot.endTime})` };
+            // 2. Bound Check: Must still fit in slot if applicable
+            if (booking.slotId) {
+                const slot = await prisma.slot.findUnique({ where: { id: booking.slotId } });
+                if (slot) {
+                    const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number);
+                    const slotEndVal = slotEndH * 60 + slotEndM;
+                    if (bookingEndVal > slotEndVal) {
+                        return { success: false, error: `Extension exceeds slot window (${slot.endTime})` };
+                    }
                 }
             }
         }

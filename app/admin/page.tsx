@@ -37,7 +37,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export default async function AdminOverview() {
     // Real stats from DB
-    const totalPlayers = await prisma.user.count();
+    const totalPlayers = await prisma.user.count({ where: { role: "USER" } });
     const activeBookings = await prisma.booking.count({ where: { status: "Upcoming" } });
     const slotUtilization = 68; // Mock percentage
 
