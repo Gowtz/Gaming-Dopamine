@@ -98,13 +98,23 @@ export default async function BookingList({ searchParams }: BookingListProps) {
                         <TableRow key={booking.id}>
                             <TableCell>
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={booking.user?.image || ""} />
-                                        <AvatarFallback>{booking.user?.name?.[0] || "G"}</AvatarFallback>
-                                    </Avatar>
+                                    {booking.source === 'ONLINE' && booking.user ? (
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={booking.user.image || ""} />
+                                            <AvatarFallback>{booking.user.name?.[0] || "P"}</AvatarFallback>
+                                        </Avatar>
+                                    ) : (
+                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                            <Laptop className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    )}
                                     <div className="flex flex-col">
-                                        <span className="font-medium">{booking.user?.name || "Guest Player"}</span>
-                                        <span className="text-xs text-muted-foreground">{booking.user?.email || "Offline Booking"}</span>
+                                        <span className="font-medium">
+                                            {booking.source === 'ONLINE' ? booking.user?.name : (booking.user?.name || "Walk-in Guest")}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {booking.source === 'ONLINE' ? "Online Booking" : "Offline / Walk-in"}
+                                        </span>
                                     </div>
                                 </div>
                             </TableCell>

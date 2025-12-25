@@ -2,10 +2,12 @@ import prisma from "@/lib/prisma";
 import { Filter, Search, Calendar as CalendarIcon, Download } from "lucide-react";
 import BookingList from "@/components/admin/BookingList";
 import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { revalidatePath } from "next/cache";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
 
 interface BookingsPageProps {
     searchParams: {
@@ -18,13 +20,27 @@ interface BookingsPageProps {
 export default async function AdminBookingsPage(props: { searchParams: Promise<BookingsPageProps["searchParams"]> }) {
     const searchParams = await props.searchParams;
 
-    const [totalBookings, completedBookings, upcomingBookings, users, slots] = await Promise.all([
+    const [totalBookings, completedBookings, upcomingBookings, users, slots, allUpcoming] = await Promise.all([
         prisma.booking.count(),
         prisma.booking.count({ where: { status: "Completed" } }),
         prisma.booking.count({ where: { status: "Upcoming" } }),
         prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
-        prisma.slot.findMany({ where: { status: "AVAILABLE" } })
+        prisma.slot.findMany({ where: { status: "AVAILABLE" } }),
+        prisma.booking.findMany({
+            where: { status: "Upcoming" },
+            include: { user: { include: { membership: true } }, slot: true },
+            orderBy: { date: 'asc' }
+        })
     ]);
+
+    const now = new Date();
+    // Filter Active Sessions (Start <= Now < End)
+    const activeSlots = allUpcoming.filter(booking => {
+        const startTime = new Date(booking.date);
+        const endTime = new Date(booking.date);
+        endTime.setMinutes(endTime.getMinutes() + booking.duration);
+        return startTime <= now && endTime > now;
+    });
 
     return (
         <div className="space-y-8">
@@ -71,64 +87,89 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                 </Card>
             </div>
 
-            {/* Filters Bar */}
-            <Card>
-                <CardContent className="p-4 flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2 text-muted-foreground mr-2 border-r pr-4">
-                        <Filter className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
-                    </div>
 
-                    <div className="flex flex-1 flex-wrap items-center gap-4">
-                        <form className="contents">
-                            <div className="relative flex-1 min-w-[200px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search players..."
-                                    className="pl-10"
-                                />
+            {/* Tabs for Active vs History */}
+            <Tabs defaultValue="history" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                    <TabsTrigger value="active">Active Sessions</TabsTrigger>
+                    <TabsTrigger value="history">Booking History</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="active" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Active Sessions</CardTitle>
+                            <CardDescription>
+                                Currently running games.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ActiveSlotsList slots={activeSlots} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-6">
+                    {/* Filters Bar */}
+                    <Card className="mb-6">
+                        <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                            <div className="flex items-center gap-2 text-muted-foreground mr-2 border-r pr-4">
+                                <Filter className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Filters</span>
                             </div>
 
-                            <select
-                                name="type"
-                                defaultValue={searchParams.type || ""}
-                                className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option value="">All Types</option>
-                                <option value="PS5">PS5</option>
-                                <option value="VR">VR</option>
-                                <option value="Racing">Racing</option>
-                            </select>
+                            <div className="flex flex-1 flex-wrap items-center gap-4">
+                                <form className="contents">
+                                    <div className="relative flex-1 min-w-[200px]">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Input
+                                            type="text"
+                                            placeholder="Search players..."
+                                            className="pl-10"
+                                        />
+                                    </div>
 
-                            <select
-                                name="status"
-                                defaultValue={searchParams.status || ""}
-                                className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option value="">All Status</option>
-                                <option value="Upcoming">Upcoming</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </select>
+                                    <select
+                                        name="type"
+                                        defaultValue={searchParams.type || ""}
+                                        className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">All Types</option>
+                                        <option value="PS5">PS5</option>
+                                        <option value="VR">VR</option>
+                                        <option value="Racing">Racing</option>
+                                    </select>
 
-                            <Input
-                                type="date"
-                                name="date"
-                                defaultValue={searchParams.date}
-                                className="w-[160px]"
-                            />
+                                    <select
+                                        name="status"
+                                        defaultValue={searchParams.status || ""}
+                                        className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="Upcoming">Upcoming</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    </select>
 
-                            <Button type="submit" variant="secondary" size="sm">
-                                Apply
-                            </Button>
-                        </form>
-                    </div>
-                </CardContent>
-            </Card>
+                                    <Input
+                                        type="date"
+                                        name="date"
+                                        defaultValue={searchParams.date}
+                                        className="w-[160px]"
+                                    />
 
-            {/* Booking List */}
-            <BookingList searchParams={searchParams} />
+                                    <Button type="submit" variant="secondary" size="sm">
+                                        Apply
+                                    </Button>
+                                </form>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Booking List */}
+                    <BookingList searchParams={searchParams} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

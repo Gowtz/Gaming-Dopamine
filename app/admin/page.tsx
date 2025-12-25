@@ -5,7 +5,8 @@ import {
     DollarSign,
     TrendingUp,
     CalendarCheck,
-    Activity
+    Activity,
+    AlertCircle
 } from "lucide-react";
 
 import {
@@ -28,16 +29,29 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CreateSlotModal from "@/components/admin/CreateSlotModal";
 import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
+import { FinishedSessionsList } from "@/components/admin/FinishedSessionsList";
 import PlayerSearchModal from "@/components/admin/PlayerSearchModal";
 import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
 import { UserPlus } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 export default async function AdminOverview() {
     // Real stats from DB
     const totalPlayers = await prisma.user.count();
     const activeBookings = await prisma.booking.count({ where: { status: "Upcoming" } });
-    const totalRevenue = 1250.50; // Mock revenue
     const slotUtilization = 68; // Mock percentage
+
+    // Calculate Realtime Revenue from Completed bookings
+    const completedBookings = await prisma.booking.findMany({
+        where: { status: "Completed" },
+        include: { slot: true }
+    });
+
+    const totalRevenue = completedBookings.reduce((acc, booking) => {
+        const pricePerHour = booking.slot?.price || 100; // Fallback price
+        const cost = Math.ceil((booking.duration / 60) * pricePerHour);
+        return acc + cost;
+    }, 0);
 
     const [users, slots] = await Promise.all([
         prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
@@ -52,14 +66,15 @@ export default async function AdminOverview() {
     ];
 
     const recentBookings = await prisma.booking.findMany({
-        take: 5,
-        orderBy: { date: 'desc' },
-        include: { user: true }
+        take: 7,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true, slot: true }
     });
 
     // Get currently active bookings (happening right now)
     const now = new Date();
-    const activeSlots = await prisma.booking.findMany({
+
+    const allUpcomingBookings = await prisma.booking.findMany({
         where: {
             status: "Upcoming",
         },
@@ -69,6 +84,7 @@ export default async function AdminOverview() {
                     id: true,
                     name: true,
                     email: true,
+                    image: true,
                     membership: {
                         select: {
                             isSubscriber: true,
@@ -81,17 +97,26 @@ export default async function AdminOverview() {
             slot: true
         },
         orderBy: {
-            createdAt: 'desc'
+            date: 'asc' // Order by start time
         }
-    }).then(bookings =>
-        // Filter to only include bookings that are currently active
-        bookings.filter(booking => {
-            const startTime = new Date(booking.date);
-            const endTime = new Date(booking.date);
-            endTime.setMinutes(endTime.getMinutes() + booking.duration);
-            return startTime <= now && endTime > now;
-        })
-    );
+    });
+
+    // Filter Active Sessions (Start <= Now < End)
+    const activeSlots = allUpcomingBookings.filter(booking => {
+        const startTime = new Date(booking.date);
+        const endTime = new Date(booking.date);
+        endTime.setMinutes(endTime.getMinutes() + booking.duration);
+        return startTime <= now && endTime > now;
+    });
+
+    // Filter Finished Sessions (End <= Now) - Pending Checkout
+    const finishedSlots = allUpcomingBookings.filter(booking => {
+        const endTime = new Date(booking.date);
+        endTime.setMinutes(endTime.getMinutes() + booking.duration);
+        return endTime <= now;
+    });
+
+
 
 
     return (
@@ -136,61 +161,40 @@ export default async function AdminOverview() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                {/* Recent Activity */}
-                <Card className="col-span-4">
-                    <CardHeader>
-                        <CardTitle>Recent Bookings</CardTitle>
-                        <CardDescription>
-                            Latest reservations made by players.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[250px]">Player</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                    <TableHead className="text-right">Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentBookings.length > 0 ? (
-                                    recentBookings.map((booking) => (
-                                        <TableRow key={booking.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={booking.user?.image || ""} />
-                                                        <AvatarFallback>{booking.user?.name?.[0] || "G"}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex flex-col">
-                                                        <span>{booking.user?.name || "Guest Player"}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{booking.user?.email || "Offline Booking"}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{booking.type}</TableCell>
-                                            <TableCell>{booking.duration}m</TableCell>
-                                            <TableCell className="text-right">
-                                                {new Date(booking.date).toLocaleDateString()}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No recent bookings.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                {/* Left Column: Active & Finished Sessions (Big) */}
+                <div className="col-span-4 space-y-6">
 
-                {/* Quick Actions & Status */}
+                    {/* Finished Sessions Section (High Priority) - Always Visible */}
+                    <Card className="border-red-500/20 bg-red-500/5">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-red-600" />
+                                <CardTitle className="text-red-600">Finished Sessions</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Sessions that have ended. Please process payment or checkout.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <FinishedSessionsList slots={finishedSlots} />
+                        </CardContent>
+                    </Card>
+
+                    {/* Active Slots */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Active Slots</CardTitle>
+                            <CardDescription>Currently running sessions.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ActiveSlotsList slots={activeSlots} />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column: Recent Bookings & Actions (Small) */}
                 <div className="col-span-3 space-y-4">
+                    {/* Quick Actions */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Quick Actions</CardTitle>
@@ -211,17 +215,77 @@ export default async function AdminOverview() {
                         </CardContent>
                     </Card>
 
-                    {/* Active Slots */}
+                    {/* Recent Bookings */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Active Slots</CardTitle>
-                            <CardDescription>Currently running sessions.</CardDescription>
+                            <CardTitle>Recent Bookings</CardTitle>
+                            <CardDescription>
+                                Latest reservations made.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ActiveSlotsList slots={activeSlots} />
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Player Info</TableHead>
+                                        <TableHead className="text-right">Details</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {recentBookings.length > 0 ? (
+                                        recentBookings.map((booking) => {
+                                            const isOnline = booking.source === 'ONLINE';
+                                            const bookingTime = new Date(booking.date);
+                                            const startTimeStr = bookingTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                                            return (
+                                                <TableRow key={booking.id}>
+                                                    <TableCell className="font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            {isOnline && booking.user ? (
+                                                                <Avatar className="h-8 w-8">
+                                                                    <AvatarImage src={booking.user.image || ""} />
+                                                                    <AvatarFallback>{booking.user.name?.[0] || "P"}</AvatarFallback>
+                                                                </Avatar>
+                                                            ) : (
+                                                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                                                </div>
+                                                            )}
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-medium">
+                                                                    {isOnline ? booking.user?.name : "Walk-in Guest"}
+                                                                </span>
+                                                                <span className="text-[10px] text-muted-foreground">
+                                                                    {isOnline ? "Online Booking" : "Offline Booking"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <div className="text-xs font-medium">
+                                                                For {startTimeStr}
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground">
+                                                                Booked {formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true })}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="h-24 text-center">
+                                                No recent bookings.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
-
                 </div>
             </div>
         </div>
