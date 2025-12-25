@@ -40,7 +40,6 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
     const [customDuration, setCustomDuration] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [bookingType, setBookingType] = useState<BookingSource>(BookingSource.OFFLINE);
     const router = useRouter();
 
     const durations = [
@@ -78,7 +77,7 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                 selectedSlotId,
                 finalDuration,
                 finalStartTime || undefined,
-                bookingType
+                BookingSource.OFFLINE
             );
             setOpen(false);
             setShowConfirm(false);
@@ -175,23 +174,6 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                         </Select>
                     </div>
 
-                    {/* Booking Type Selection */}
-                    <div className="space-y-2">
-                        <Label>Booking Type</Label>
-                        <Select value={bookingType} onValueChange={(val: BookingSource) => setBookingType(val)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select booking type" />
-                            </SelectTrigger>
-                            <SelectContent className="admin-theme">
-                                <SelectItem value={BookingSource.OFFLINE}>Offline Booking (Walk-in)</SelectItem>
-                                <SelectItem value={BookingSource.ONLINE}>Online Booking (User Profile)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-[10px] text-muted-foreground italic mt-1">
-                            * {bookingType === BookingSource.OFFLINE ? "Offline bookings will not show payment type during session extension." : "Online bookings will show payment type during extension."}
-                        </p>
-                    </div>
-
                     {/* Start Time Selection */}
                     {selectedSlotId && (
                         <div className="space-y-3">
@@ -264,7 +246,6 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                             <div className="text-sm space-y-1">
                                 <p><span className="text-muted-foreground">Player:</span> {selectedUser?.name || "Guest"}</p>
                                 <p><span className="text-muted-foreground">Slot:</span> {selectedSlot?.title || selectedSlot?.type}</p>
-                                <p><span className="text-muted-foreground">Type:</span> {bookingType === BookingSource.ONLINE ? "Online" : "Offline"}</p>
                                 <p><span className="text-muted-foreground">Start:</span> {startTimeType === "now" ? "Immediate" : `After current occupancy (@ ${getNextAvailableTime()})`}</p>
                                 <p><span className="text-muted-foreground">Duration:</span> {customDuration || duration} mins</p>
                             </div>

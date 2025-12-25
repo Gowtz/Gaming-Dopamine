@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CreateSlotModal from "@/components/admin/CreateSlotModal";
 import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
 import { FinishedSessionsList } from "@/components/admin/FinishedSessionsList";
+import { UpcomingSessionsList } from "@/components/admin/UpcomingSessionsList";
 import PlayerSearchModal from "@/components/admin/PlayerSearchModal";
 import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
 import { UserPlus } from "lucide-react";
@@ -116,6 +117,12 @@ export default async function AdminOverview() {
         return endTime <= now;
     });
 
+    // Filter Sessions to Start (Start > Now)
+    const upcomingSlots = allUpcomingBookings.filter(booking => {
+        const startTime = new Date(booking.date);
+        return startTime > now;
+    });
+
 
 
 
@@ -164,15 +171,17 @@ export default async function AdminOverview() {
                 {/* Left Column: Active & Finished Sessions (Big) */}
                 <div className="col-span-4 space-y-6">
 
-                    {/* Finished Sessions Section (High Priority) - Always Visible */}
-                    <Card className="border-red-500/20 bg-red-500/5">
+                    {/* Finished Sessions Section (High Priority) - Conditional Styling */}
+                    <Card className={finishedSlots.length > 0 ? "border-red-500/20 bg-red-500/5" : "bg-muted/30 border-muted"}>
                         <CardHeader>
                             <div className="flex items-center gap-2">
-                                <AlertCircle className="h-5 w-5 text-red-600" />
-                                <CardTitle className="text-red-600">Finished Sessions</CardTitle>
+                                <AlertCircle className={finishedSlots.length > 0 ? "h-5 w-5 text-red-600" : "h-5 w-5 text-muted-foreground"} />
+                                <CardTitle className={finishedSlots.length > 0 ? "text-red-600" : "text-muted-foreground"}>Finished Sessions</CardTitle>
                             </div>
                             <CardDescription>
-                                Sessions that have ended. Please process payment or checkout.
+                                {finishedSlots.length > 0
+                                    ? "Sessions that have ended. Please process payment or checkout."
+                                    : "No sessions currently pending checkout."}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -188,6 +197,20 @@ export default async function AdminOverview() {
                         </CardHeader>
                         <CardContent>
                             <ActiveSlotsList slots={activeSlots} />
+                        </CardContent>
+                    </Card>
+
+                    {/* Upcoming Sessions */}
+                    <Card className="bg-blue-50/10 border-blue-500/10">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <CalendarCheck className="h-5 w-5 text-blue-600" />
+                                <CardTitle className="text-blue-600">Upcoming Sessions</CardTitle>
+                            </div>
+                            <CardDescription>Scheduled sessions starting soon.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <UpcomingSessionsList slots={upcomingSlots} />
                         </CardContent>
                     </Card>
                 </div>

@@ -228,7 +228,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                         {slot.user?.name || "Guest Player"}
                                     </p>
                                     <Badge variant="outline" className="text-xs font-normal">
-                                        {slot.type}
+                                        {slot.slot?.title || slot.type}
                                     </Badge>
                                     {slot.isAdminExtended && (
                                         <Badge variant="secondary" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
