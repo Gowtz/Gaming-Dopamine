@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Clock, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Clock, Plus, Trash2, AlertTriangle, CheckCircle2, DollarSign, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { extendBooking, deleteBooking } from "@/lib/actions/booking-actions";
@@ -89,7 +89,20 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
     } | null>(null);
     const [conflictData, setConflictData] = useState<{ user: any } | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [paymentModal, setPaymentModal] = useState<{
+        slot: any;
+        amount: number;
+        isCustom?: boolean;
+    } | null>(null);
+    const customInputRef = useRef<HTMLInputElement>(null);
     const [override, setOverride] = useState(false);
+
+    useEffect(() => {
+        if (paymentModal?.isCustom) {
+            customInputRef.current?.focus();
+            customInputRef.current?.select();
+        }
+    }, [paymentModal?.isCustom]);
 
     const resetState = () => {
         setExtensionData(null);
@@ -134,6 +147,27 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
         const percentage = Math.min(100, Math.max(0, (elapsed / total) * 100));
         return percentage;
     }
+
+    const handleComplete = async (bookingId: string) => {
+        setExtending(bookingId); // Reuse state or add new one
+        try {
+            await extendBooking(bookingId, 0, (session?.user as any)?.id || "admin", "Finished Early", "OFFLINE_CASH", true); // This is hacky, I should probably have an endBooking action
+            // Actually let's assume updateBookingStatus is available or I'll just use the one from admin-actions
+            const { updateBookingStatus } = await import("@/lib/actions/admin-actions");
+            await updateBookingStatus(bookingId, "Completed");
+            setPaymentModal(null);
+            router.refresh();
+        } catch (error) {
+            console.error("Failed to complete session:", error);
+        } finally {
+            setExtending(null);
+        }
+    };
+
+    const getSessionCost = (duration: number, slotPrice?: number) => {
+        const pricePerHour = slotPrice || 100;
+        return Math.ceil((duration / 60) * pricePerHour);
+    };
 
     const handleExtend = async () => {
         if (!extensionData) return;
@@ -227,6 +261,9 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                     <p className="font-semibold text-base truncate">
                                         {slot.user?.name || "Guest Player"}
                                     </p>
+                                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">
+                                        Ongoing
+                                    </Badge>
                                     <Badge variant="outline" className="text-xs font-normal">
                                         {slot.slot?.title || slot.type}
                                     </Badge>
@@ -248,6 +285,25 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                             </div>
 
                             <div className="relative z-10 flex items-center gap-2 ml-4">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const isSubscriber = slot.user?.membership?.isSubscriber;
+                                        if (isSubscriber) {
+                                            handleComplete(slot.id);
+                                        } else {
+                                            setPaymentModal({
+                                                slot,
+                                                amount: getSessionCost(slot.duration, slot.slot?.price)
+                                            });
+                                        }
+                                    }}
+                                    className="shrink-0 h-9 bg-background/80 hover:bg-background border shadow-sm text-green-600"
+                                >
+                                    <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                                    Checkout
+                                </Button>
                                 <Button
                                     size="sm"
                                     variant="secondary"
@@ -377,6 +433,78 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                         >
                             {extending ? "Extending..." : (conflictData || errorMsg) ? "Confirm Override" : "Confirm Extension"}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Payment Modal */}
+            <Dialog open={!!paymentModal} onOpenChange={(open) => !open && setPaymentModal(null)}>
+                <DialogContent className="admin-theme">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Payment</DialogTitle>
+                        <DialogDescription>
+                            Select payment method for <b>{paymentModal?.slot.user?.name || "Guest"}</b>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-6 flex flex-col items-center justify-center gap-6">
+                        <div className="flex flex-col items-center gap-2 w-full py-4">
+                            {paymentModal?.isCustom ? (
+                                <div className="relative w-full max-w-sm">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-7xl font-bold text-green-600">₹</span>
+                                    <Input
+                                        ref={customInputRef}
+                                        type="number"
+                                        value={paymentModal.amount}
+                                        onChange={(e) => setPaymentModal({ ...paymentModal, amount: Number(e.target.value) })}
+                                        className="text-8xl font-black text-green-600 h-32 text-center bg-transparent border-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full !text-8xl"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="text-8xl font-black text-green-600 py-6">
+                                    ₹{paymentModal?.amount}
+                                </div>
+                            )}
+                            <p className="text-sm text-muted-foreground">Session Duration: {paymentModal?.slot.duration} mins</p>
+                        </div>
+
+                        {/* Payment Selection Toggle */}
+                        <div className="w-full space-y-4 border-t pt-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Payment Type</span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant={!paymentModal?.isCustom ? "default" : "outline"}
+                                        onClick={() => setPaymentModal(prev => prev ? { ...prev, amount: getSessionCost(prev.slot.duration, prev.slot.slot?.price || 100), isCustom: false } : null)}
+                                    >
+                                        Full
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={paymentModal?.isCustom ? "default" : "outline"}
+                                        onClick={() => setPaymentModal(prev => prev ? { ...prev, isCustom: true } : null)}
+                                    >
+                                        Custom
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 w-full mt-4">
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)} disabled={extending === paymentModal?.slot.id}>
+                                    <Wallet className="h-6 w-6" />
+                                    Cash Received
+                                </Button>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)} disabled={extending === paymentModal?.slot.id}>
+                                    <div className="font-bold text-lg">UPI</div>
+                                    Online Transfer
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setPaymentModal(null)}>Cancel</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

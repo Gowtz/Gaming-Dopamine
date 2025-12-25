@@ -234,7 +234,7 @@ export default async function AdminOverview() {
                                     }
                                 />
                             </div>
-                            <OfflineBookingModal users={users} slots={slots} />
+                            <OfflineBookingModal users={users} slots={slots} existingBookings={allUpcomingBookings} />
                         </CardContent>
                     </Card>
 

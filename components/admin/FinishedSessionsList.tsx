@@ -14,6 +14,8 @@ import {
 import { updateBookingStatus } from "@/lib/actions/admin-actions";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { useEffect, useRef } from "react";
 
 interface FinishedSlot {
     id: string;
@@ -47,7 +49,16 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
     const [paymentModal, setPaymentModal] = useState<{
         slot: FinishedSlot;
         amount: number;
+        isCustom?: boolean;
     } | null>(null);
+    const customInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (paymentModal?.isCustom) {
+            customInputRef.current?.focus();
+            customInputRef.current?.select();
+        }
+    }, [paymentModal?.isCustom]);
 
     // Calculate dynamic pricing
     const getSessionCost = (duration: number, slotPrice?: number) => {
@@ -149,7 +160,7 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
 
             {/* Payment Modal */}
             <Dialog open={!!paymentModal} onOpenChange={(open) => !open && setPaymentModal(null)}>
-                <DialogContent>
+                <DialogContent className="admin-theme">
                     <DialogHeader>
                         <DialogTitle>Confirm Payment</DialogTitle>
                         <DialogDescription>
@@ -157,21 +168,59 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="py-6 flex flex-col items-center justify-center gap-4">
-                        <div className="text-3xl font-bold text-green-600">
-                            ₹{paymentModal?.amount}
+                    <div className="py-6 flex flex-col items-center justify-center gap-6">
+                        <div className="flex flex-col items-center gap-2 w-full py-4">
+                            {paymentModal?.isCustom ? (
+                                <div className="relative w-full max-w-sm">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-7xl font-bold text-green-600">₹</span>
+                                    <Input
+                                        ref={customInputRef}
+                                        type="number"
+                                        value={paymentModal.amount}
+                                        onChange={(e) => setPaymentModal({ ...paymentModal, amount: Number(e.target.value) })}
+                                        className="text-8xl font-black text-green-600 h-32 text-center bg-transparent border-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full !text-8xl"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="text-8xl font-black text-green-600 py-6">
+                                    ₹{paymentModal?.amount}
+                                </div>
+                            )}
+                            <p className="text-sm text-muted-foreground">Session Duration: {paymentModal?.slot.duration} mins</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">Session Duration: {paymentModal?.slot.duration} mins</p>
 
-                        <div className="grid grid-cols-2 gap-3 w-full mt-4">
-                            <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
-                                <Wallet className="h-6 w-6" />
-                                Cash Received
-                            </Button>
-                            <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
-                                <div className="font-bold text-lg">UPI</div>
-                                Online Transfer
-                            </Button>
+                        {/* Payment Selection Toggle */}
+                        <div className="w-full space-y-4 border-t pt-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Payment Type</span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant={!paymentModal?.isCustom ? "default" : "outline"}
+                                        onClick={() => setPaymentModal(prev => prev ? { ...prev, amount: getSessionCost(prev.slot.duration, prev.slot.slot?.price || 100), isCustom: false } : null)}
+                                    >
+                                        Full
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={paymentModal?.isCustom ? "default" : "outline"}
+                                        onClick={() => setPaymentModal(prev => prev ? { ...prev, isCustom: true } : null)}
+                                    >
+                                        Custom
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 w-full mt-4">
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
+                                    <Wallet className="h-6 w-6" />
+                                    Cash Received
+                                </Button>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
+                                    <div className="font-bold text-lg">UPI</div>
+                                    Online Transfer
+                                </Button>
+                            </div>
                         </div>
                     </div>
 

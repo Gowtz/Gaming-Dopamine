@@ -17,29 +17,64 @@ interface BookingsPageProps {
     };
 }
 
-export default async function AdminBookingsPage(props: { searchParams: Promise<BookingsPageProps["searchParams"]> }) {
+export default async function AdminBookingsPage(props: { searchParams: Promise<BookingsPageProps["searchParams"] & { search?: string }> }) {
     const searchParams = await props.searchParams;
 
-    const [totalBookings, completedBookings, upcomingBookings, users, slots, allUpcoming] = await Promise.all([
+    // Data fetching
+    const [totalBookings, completedBookings, upcomingCount, users, slots, allBookings] = await Promise.all([
         prisma.booking.count(),
         prisma.booking.count({ where: { status: "Completed" } }),
         prisma.booking.count({ where: { status: "Upcoming" } }),
         prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
         prisma.slot.findMany({ where: { status: "AVAILABLE" } }),
         prisma.booking.findMany({
-            where: { status: "Upcoming" },
             include: { user: { include: { membership: true } }, slot: true },
             orderBy: { date: 'asc' }
         })
     ]);
 
     const now = new Date();
-    // Filter Active Sessions (Start <= Now < End)
-    const activeSlots = allUpcoming.filter(booking => {
+
+    // Active Sessions (Start <= Now < End)
+    const activeSlots = allBookings.filter(booking => {
+        if (booking.status !== "Upcoming") return false;
         const startTime = new Date(booking.date);
         const endTime = new Date(booking.date);
         endTime.setMinutes(endTime.getMinutes() + booking.duration);
         return startTime <= now && endTime > now;
+    });
+
+    // Upcoming (Now < Start && status == "Upcoming")
+    const futureBookings = allBookings.filter(booking => {
+        if (booking.status !== "Upcoming") return false;
+        const startTime = new Date(booking.date);
+        return startTime > now;
+    });
+
+    // History Bookings (Filtered)
+    const historyBookings = await prisma.booking.findMany({
+        where: {
+            status: { in: ["Completed", "Cancelled"] },
+            ...(searchParams.status ? { status: searchParams.status } : {}),
+            ...(searchParams.type ? { type: searchParams.type } : {}),
+            ...(searchParams.date ? {
+                date: {
+                    gte: new Date(new Date(searchParams.date).setHours(0, 0, 0, 0)),
+                    lte: new Date(new Date(searchParams.date).setHours(23, 59, 59, 999)),
+                }
+            } : {}),
+            ...(searchParams.search ? {
+                OR: [
+                    { user: { name: { contains: searchParams.search, mode: 'insensitive' } } },
+                    { user: { email: { contains: searchParams.search, mode: 'insensitive' } } },
+                ]
+            } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        include: {
+            user: true,
+            slot: true
+        },
     });
 
     return (
@@ -51,8 +86,8 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                     <p className="text-muted-foreground">Review and manage all player reservations.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <OfflineBookingModal users={users} slots={slots} />
-                    <Button variant="outline">
+                    <OfflineBookingModal users={users} slots={slots} existingBookings={allBookings} />
+                    <Button variant="outline" disabled={true} >
                         <Download className="mr-2 h-4 w-4" />
                         Export CSV
                     </Button>
@@ -82,16 +117,17 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                         <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{upcomingBookings}</div>
+                        <div className="text-2xl font-bold">{upcomingCount}</div>
                     </CardContent>
                 </Card>
             </div>
 
 
-            {/* Tabs for Active vs History */}
-            <Tabs defaultValue="history" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+            {/* Tabs for Booking Management */}
+            <Tabs defaultValue="active" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
                     <TabsTrigger value="active">Active Sessions</TabsTrigger>
+                    <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                     <TabsTrigger value="history">Booking History</TabsTrigger>
                 </TabsList>
 
@@ -109,6 +145,20 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="upcoming" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Upcoming Reservations</CardTitle>
+                            <CardDescription>
+                                Bookings scheduled for the future.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <BookingList initialBookings={futureBookings} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="history" className="mt-6">
                     {/* Filters Bar */}
                     <Card className="mb-6">
@@ -121,53 +171,60 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                             <div className="flex flex-1 flex-wrap items-center gap-4">
                                 <form className="contents">
                                     <div className="relative flex-1 min-w-[200px]">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                                         <Input
                                             type="text"
+                                            name="search"
                                             placeholder="Search players..."
-                                            className="pl-10"
+                                            className="pl-10 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-10"
+                                            defaultValue={searchParams.search}
                                         />
                                     </div>
 
                                     <select
-                                        name="type"
-                                        defaultValue={searchParams.type || ""}
-                                        className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <option value="">All Types</option>
-                                        <option value="PS5">PS5</option>
-                                        <option value="VR">VR</option>
-                                        <option value="Racing">Racing</option>
-                                    </select>
-
-                                    <select
                                         name="status"
                                         defaultValue={searchParams.status || ""}
-                                        className="flex h-10 w-[160px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-10 w-[160px] items-center justify-between rounded-md border-none bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                                     >
-                                        <option value="">All Status</option>
-                                        <option value="Upcoming">Upcoming</option>
+                                        <option value="">Status: All History</option>
                                         <option value="Completed">Completed</option>
                                         <option value="Cancelled">Cancelled</option>
                                     </select>
 
-                                    <Input
-                                        type="date"
-                                        name="date"
-                                        defaultValue={searchParams.date}
-                                        className="w-[160px]"
-                                    />
+                                    <div className="relative w-[180px]">
+                                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                        <Input
+                                            type="date"
+                                            name="date"
+                                            defaultValue={searchParams.date}
+                                            className="pl-10 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-10 w-full"
+                                        />
+                                    </div>
 
-                                    <Button type="submit" variant="secondary" size="sm">
-                                        Apply
+                                    <Button type="submit" variant="default" size="sm" className="h-10 px-6 font-semibold">
+                                        Apply Filters
                                     </Button>
+
+                                    {(searchParams.status || searchParams.date || searchParams.search) && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-10 px-4 text-muted-foreground hover:text-foreground"
+                                            onClick={() => window.location.href = '/admin/bookings'}
+                                        >
+                                            Clear
+                                        </Button>
+                                    )}
                                 </form>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Booking List */}
-                    <BookingList searchParams={searchParams} />
+                    <div className="bg-background rounded-lg shadow-sm border overflow-hidden">
+                        <BookingList initialBookings={historyBookings} />
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>

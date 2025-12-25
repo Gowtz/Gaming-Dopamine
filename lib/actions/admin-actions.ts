@@ -21,7 +21,16 @@ export async function deleteBooking(id: string) {
     revalidatePath("/admin");
 }
 
-export async function createOfflineBooking(userId: string | null, slotId: string, duration?: number, startTime?: string, source: BookingSource = BookingSource.OFFLINE) {
+import { format, parse, addMinutes, isAfter, isBefore } from "date-fns";
+
+export async function createOfflineBooking(
+    userId: string | null,
+    slotId: string,
+    duration?: number,
+    startTime?: string,
+    source: BookingSource = BookingSource.OFFLINE,
+    force: boolean = false
+) {
     const slot = await prisma.slot.findUnique({
         where: { id: slotId },
     });
@@ -31,21 +40,23 @@ export async function createOfflineBooking(userId: string | null, slotId: string
     const bookingStartTimeStr = startTime || slot.startTime;
     const bookingDuration = duration || slot.duration;
 
-    // 1. Validation: Skipped for Admin (Start Now)
-    const now = new Date();
-    const [startH, startM] = bookingStartTimeStr.split(':').map(Number);
-    // Validation removed to allow backfilling/start-now
+    const parseTimeToMinutes = (timeStr: string) => {
+        const formatStr = timeStr.includes(" ") ? "hh:mm a" : "HH:mm";
+        try {
+            const date = parse(timeStr, formatStr, new Date());
+            return date.getHours() * 60 + date.getMinutes();
+        } catch (e) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        }
+    };
 
-    // 2. Validation: Must fit within slot timing
-    const [slotStartH, slotStartM] = slot.startTime.split(':').map(Number);
-    const [slotEndH, slotEndM] = slot.endTime.split(':').map(Number);
-
-    const slotStartVal = slotStartH * 60 + slotStartM;
-    const slotEndVal = slotEndH * 60 + slotEndM;
-    const bookingStartVal = startH * 60 + startM;
+    const slotStartVal = parseTimeToMinutes(slot.startTime);
+    const slotEndVal = parseTimeToMinutes(slot.endTime);
+    const bookingStartVal = parseTimeToMinutes(bookingStartTimeStr);
     const bookingEndVal = bookingStartVal + bookingDuration;
 
-    if (bookingStartVal < slotStartVal || bookingEndVal > slotEndVal) {
+    if (!force && (bookingStartVal < slotStartVal || bookingEndVal > slotEndVal)) {
         throw new Error(`Booking must fit within slot window (${slot.startTime} - ${slot.endTime})`);
     }
 
@@ -62,17 +73,13 @@ export async function createOfflineBooking(userId: string | null, slotId: string
     });
 
     for (const b of existingBookings) {
-        const [bStartH, bStartM] = (b.startTime as string).split(':').map(Number);
-        const bStartVal = bStartH * 60 + bStartM;
+        const bStartVal = parseTimeToMinutes(b.startTime as string);
         const bEndVal = bStartVal + b.duration;
 
         // Check for overlap [start, end]
-        if (
-            (bookingStartVal >= bStartVal && bookingStartVal < bEndVal) ||
-            (bookingEndVal > bStartVal && bookingEndVal <= bEndVal) ||
-            (bookingStartVal <= bStartVal && bookingEndVal >= bEndVal)
-        ) {
-            throw new Error("Time conflict: This range overlaps with an existing booking.");
+        // True overlap: (StartA < EndB) && (EndA > StartB)
+        if (bookingStartVal < bEndVal && bookingEndVal > bStartVal) {
+            throw new Error(`Time conflict with existing booking (${b.startTime} - ${b.duration} mins)`);
         }
     }
 

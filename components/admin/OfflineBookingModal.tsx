@@ -24,22 +24,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createOfflineBooking } from "@/lib/actions/admin-actions";
 import { useRouter } from "next/navigation";
 import { BookingSource } from "@prisma/client";
+import { format, addMinutes, isAfter, isBefore, isEqual, parse, startOfToday } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 
 interface OfflineBookingModalProps {
     users: any[];
     slots: any[];
+    existingBookings?: any[];
 }
 
-export default function OfflineBookingModal({ users, slots }: OfflineBookingModalProps) {
+export default function OfflineBookingModal({ users, slots, existingBookings = [] }: OfflineBookingModalProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [selectedSlotId, setSelectedSlotId] = useState("");
-    const [startTimeType, setStartTimeType] = useState<"now" | "after">("now");
+    const [startTimeType, setStartTimeType] = useState<"now" | "after" | "custom">("now");
+    const [customStartTime, setCustomStartTime] = useState("");
     const [duration, setDuration] = useState<number>(60);
     const [customDuration, setCustomDuration] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [conflictError, setConflictError] = useState<string | null>(null);
+    const [overrideTiming, setOverrideTiming] = useState(false);
     const router = useRouter();
 
     const durations = [
@@ -57,27 +63,136 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
 
     const selectedSlot = slots.find(s => s.id === selectedSlotId);
 
-    // Calculate next available time if slot is occupied
+    // Filter bookings for selected slot
+    const slotBookings = existingBookings.filter(b => b.slotId === selectedSlotId);
+
+    // Calculate next available time based on end of current/upcoming sessions
     const getNextAvailableTime = () => {
-        if (!selectedSlot) return null;
-        // In a real app, we'd check current bookings for this slot
-        // For now, let's assume if it has bookings, we show the end time of the last one
-        // Mocking this for now as we don't have the bookings passed in yet
-        return "11:30 AM";
+        if (!selectedSlot || slotBookings.length === 0) return null;
+
+        const now = new Date();
+        // Find bookings that haven't ended yet
+        const activeOrUpcoming = slotBookings.filter(b => {
+            const end = addMinutes(new Date(b.date), b.duration);
+            return isAfter(end, now);
+        });
+
+        if (activeOrUpcoming.length === 0) return null;
+
+        // Get the end time of the latest booking
+        const latestBooking = activeOrUpcoming.reduce((prev, current) => {
+            const prevEnd = addMinutes(new Date(prev.date), prev.duration);
+            const currEnd = addMinutes(new Date(current.date), current.duration);
+            return isAfter(currEnd, prevEnd) ? current : prev;
+        });
+
+        const endTime = addMinutes(new Date(latestBooking.date), latestBooking.duration);
+        return format(endTime, "hh:mm a");
     };
 
+    const nextTimeStr = getNextAvailableTime();
+
+    // Helper to Convert HH:mm A to absolute Date for today
+    const timeToDate = (timeStr: string) => {
+        if (!timeStr) return null;
+        try {
+            const formatStr = timeStr.includes(" ") ? "hh:mm a" : "HH:mm";
+            const date = parse(timeStr, formatStr, new Date());
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+            return date;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const checkConflict = (checkStart?: Date) => {
+        if (!selectedSlotId) return null;
+
+        let start: Date | null = null;
+        if (checkStart) {
+            start = checkStart;
+        } else {
+            if (startTimeType === "now") start = new Date();
+            else if (startTimeType === "after" && nextTimeStr) start = timeToDate(nextTimeStr);
+            else if (startTimeType === "custom" && customStartTime) start = timeToDate(customStartTime);
+        }
+
+        if (!start) return null;
+
+        // Zero out seconds and ms for comparison
+        start.setSeconds(0);
+        start.setMilliseconds(0);
+
+        const end = addMinutes(start, customDuration ? parseInt(customDuration) : duration);
+
+        for (const b of slotBookings) {
+            const bStart = new Date(b.date);
+            bStart.setSeconds(0);
+            bStart.setMilliseconds(0);
+            const bEnd = addMinutes(bStart, b.duration);
+            bEnd.setSeconds(0);
+            bEnd.setMilliseconds(0);
+
+            // True overlap check (exclusive of boundaries)
+            // (StartA < EndB) && (EndA > StartB)
+            if (isBefore(start, bEnd) && isAfter(end, bStart)) {
+                return `Time conflict with ${b.user?.name || "another player"}'s session (${format(bStart, "hh:mm a")} - ${format(bEnd, "hh:mm a")})`;
+            }
+        }
+        return null;
+    };
+
+    const checkSlotTiming = () => {
+        if (!selectedSlot) return null;
+
+        let start: Date | null = null;
+        if (startTimeType === "now") start = new Date();
+        else if (startTimeType === "after" && nextTimeStr) start = timeToDate(nextTimeStr);
+        else if (startTimeType === "custom" && customStartTime) start = timeToDate(customStartTime);
+
+        if (!start) return null;
+
+        start.setSeconds(0);
+        start.setMilliseconds(0);
+
+        const end = addMinutes(start, customDuration ? parseInt(customDuration) : duration);
+
+        const slotStart = timeToDate(selectedSlot.startTime);
+        const slotEnd = timeToDate(selectedSlot.endTime);
+
+        if (!slotStart || !slotEnd) return null;
+
+        if (isBefore(start, slotStart) || isAfter(end, slotEnd)) {
+            return `Session is outside slot hours (${selectedSlot.startTime} - ${selectedSlot.endTime})`;
+        }
+        return null;
+    };
+
+    const currentConflict = checkConflict();
+    const timingWarning = checkSlotTiming();
+    const nowConflict = checkConflict(new Date());
+
     const handleCreateBooking = async () => {
-        if (!selectedSlotId) return;
+        if (!selectedSlotId || currentConflict) return;
         setLoading(true);
         try {
             const finalDuration = customDuration ? parseInt(customDuration) : duration;
-            const finalStartTime = startTimeType === "now" ? null : getNextAvailableTime();
+            let finalStartTime: string | undefined = undefined;
+
+            if (startTimeType === "after") {
+                finalStartTime = nextTimeStr || undefined;
+            } else if (startTimeType === "custom") {
+                finalStartTime = customStartTime;
+            }
+
             await createOfflineBooking(
                 selectedUser?.id || null,
                 selectedSlotId,
                 finalDuration,
-                finalStartTime || undefined,
-                BookingSource.OFFLINE
+                finalStartTime,
+                BookingSource.OFFLINE,
+                overrideTiming
             );
             setOpen(false);
             setShowConfirm(false);
@@ -178,26 +293,50 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                     {selectedSlotId && (
                         <div className="space-y-3">
                             <Label>Start Time</Label>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
+                                {!nowConflict && (
+                                    <Button
+                                        type="button"
+                                        variant={startTimeType === "now" ? "default" : "outline"}
+                                        size="sm"
+                                        className="flex-1 min-w-[120px]"
+                                        onClick={() => setStartTimeType("now")}
+                                    >
+                                        Start Now
+                                    </Button>
+                                )}
+                                {nextTimeStr && (
+                                    <Button
+                                        type="button"
+                                        variant={startTimeType === "after" ? "default" : "outline"}
+                                        size="sm"
+                                        className="flex-1 min-w-[120px]"
+                                        onClick={() => setStartTimeType("after")}
+                                    >
+                                        Start @ {nextTimeStr}
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
-                                    variant={startTimeType === "now" ? "default" : "outline"}
+                                    variant={startTimeType === "custom" ? "default" : "outline"}
                                     size="sm"
-                                    className="flex-1"
-                                    onClick={() => setStartTimeType("now")}
+                                    className="flex-1 min-w-[120px]"
+                                    onClick={() => setStartTimeType("custom")}
                                 >
-                                    Start Now
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={startTimeType === "after" ? "default" : "outline"}
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={() => setStartTimeType("after")}
-                                >
-                                    Start @ {getNextAvailableTime()}
+                                    Custom Time
                                 </Button>
                             </div>
+                            {startTimeType === "custom" && (
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Input
+                                        type="time"
+                                        className="h-8 w-40"
+                                        value={customStartTime}
+                                        onChange={(e) => setCustomStartTime(e.target.value)}
+                                    />
+                                    <span className="text-xs text-muted-foreground italic">(Select start time)</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -233,10 +372,36 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                         </div>
                     </div>
 
+                    {currentConflict && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-600 text-xs">
+                            <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+                            <p>{currentConflict}</p>
+                        </div>
+                    )}
+
+                    {timingWarning && (
+                        <div className="flex flex-col gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                            <div className="flex items-start gap-2 text-amber-600 text-xs text-balance">
+                                <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+                                <p>{timingWarning}. Do you want to proceed anyway?</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id="override-timing"
+                                    checked={overrideTiming}
+                                    onCheckedChange={setOverrideTiming}
+                                />
+                                <Label htmlFor="override-timing" className="text-xs font-medium cursor-pointer">
+                                    Override Slot Timing
+                                </Label>
+                            </div>
+                        </div>
+                    )}
+
                     {!showConfirm ? (
                         <Button
                             className="w-full"
-                            disabled={!selectedSlotId || loading}
+                            disabled={!selectedSlotId || loading || !!currentConflict || (!!timingWarning && !overrideTiming)}
                             onClick={() => setShowConfirm(true)}
                         >
                             Review Booking
@@ -246,12 +411,18 @@ export default function OfflineBookingModal({ users, slots }: OfflineBookingModa
                             <div className="text-sm space-y-1">
                                 <p><span className="text-muted-foreground">Player:</span> {selectedUser?.name || "Guest"}</p>
                                 <p><span className="text-muted-foreground">Slot:</span> {selectedSlot?.title || selectedSlot?.type}</p>
-                                <p><span className="text-muted-foreground">Start:</span> {startTimeType === "now" ? "Immediate" : `After current occupancy (@ ${getNextAvailableTime()})`}</p>
+                                <p>
+                                    <span className="text-muted-foreground">Start:</span> {
+                                        startTimeType === "now" ? "Immediate" :
+                                            startTimeType === "after" ? `After current occupancy (@ ${nextTimeStr})` :
+                                                `Scheduled for ${customStartTime}`
+                                    }
+                                </p>
                                 <p><span className="text-muted-foreground">Duration:</span> {customDuration || duration} mins</p>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Back</Button>
-                                <Button className="flex-1" onClick={handleCreateBooking} disabled={loading}>
+                                <Button className="flex-1" onClick={handleCreateBooking} disabled={loading || !!currentConflict || (!!timingWarning && !overrideTiming)}>
                                     {loading ? "Creating..." : "Confirm & Create"}
                                 </Button>
                             </div>
