@@ -66,10 +66,19 @@ export default async function AdminOverview() {
         include: {
             user: {
                 select: {
+                    id: true,
                     name: true,
                     email: true,
+                    membership: {
+                        select: {
+                            isSubscriber: true,
+                            totalHours: true,
+                            utilizedHours: true,
+                        }
+                    }
                 }
-            }
+            },
+            slot: true
         },
         orderBy: {
             createdAt: 'desc'

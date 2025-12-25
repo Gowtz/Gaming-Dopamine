@@ -132,6 +132,26 @@ model Booking {
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   slot        Slot?    @relation(fields: [slotId], references: [id])
   source      BookingSource @default(ONLINE)
+
+  // Extension fields
+  isAdminExtended      Boolean   @default(false)
+  extensionReason      String?
+  extensionAdminId      String?
+  extensionPaymentMethod String? // OFFLINE_CASH, SUBSCRIPTION_HOURS
+  
+  auditLogs            BookingAuditLog[]
+}
+
+model BookingAuditLog {
+  id              String   @id @default(cuid())
+  bookingId       String
+  adminId         String
+  action          String   // e.g., "EXTEND", "MANUAL_OVERRIDE"
+  reason          String
+  paymentMethod   String?
+  timestamp       DateTime @default(now())
+  
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
 
 enum BookingSource {
@@ -154,6 +174,11 @@ model Membership {
   points        Int      @default(0)
   isSubscriber  Boolean  @default(false)
   expiresAt     DateTime?
+  
+  // Hour tracking for subscribers
+  totalHours    Float    @default(0.0)
+  utilizedHours Float    @default(0.0)
+  
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -166,8 +191,10 @@ model Stats {
 }
 
 model SystemSettings {
-  id              String   @id @default("global")
-  siteName        String   @default("Gaming Dopamine")
-  maintenanceMode Boolean  @default(false)
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default("global")
+  siteName           String   @default("Gaming Dopamine")
+  supportEmail       String   @default("support@gamingdopamine.com")
+  maintenanceMode    Boolean  @default(false)
+  emailNotifications Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
 }

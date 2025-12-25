@@ -99,12 +99,12 @@ export default async function BookingList({ searchParams }: BookingListProps) {
                             <TableCell>
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={booking.user.image || ""} />
-                                        <AvatarFallback>{booking.user.name?.[0]}</AvatarFallback>
+                                        <AvatarImage src={booking.user?.image || ""} />
+                                        <AvatarFallback>{booking.user?.name?.[0] || "G"}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <span className="font-medium">{booking.user.name}</span>
-                                        <span className="text-xs text-muted-foreground">{booking.user.email}</span>
+                                        <span className="font-medium">{booking.user?.name || "Guest Player"}</span>
+                                        <span className="text-xs text-muted-foreground">{booking.user?.email || "Offline Booking"}</span>
                                     </div>
                                 </div>
                             </TableCell>
