@@ -36,8 +36,11 @@ interface BookingListProps {
     initialBookings: any[];
 }
 
+import { useAdminStore } from "@/hooks/useAdminStore";
+
 export default function BookingList({ initialBookings: bookings }: BookingListProps) {
-    const router = useRouter();
+    // const router = useRouter(); // Removed
+    const { updateBookingStatus: updateStoreBooking, deleteBooking: removeStoreBooking } = useAdminStore();
     const [confirming, setConfirming] = useState<string | null>(null);
     const [paymentModal, setPaymentModal] = useState<{
         booking: any;
@@ -52,6 +55,8 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
             customInputRef.current?.select();
         }
     }, [paymentModal?.isCustom]);
+
+    // ... helpers ...
 
     const getStatusBadge = (status: string, booking: any) => {
         switch (status) {
@@ -86,8 +91,9 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         setConfirming(bookingId);
         try {
             await updateBookingStatus(bookingId, "Completed", amount, method);
+            updateStoreBooking(bookingId, "Completed");
             setPaymentModal(null);
-            router.refresh();
+            // router.refresh();
         } catch (error) {
             console.error("Failed to complete session:", error);
         } finally {
@@ -99,7 +105,8 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         if (!confirm("Are you sure you want to delete this booking?")) return;
         try {
             await deleteBooking(bookingId);
-            router.refresh();
+            removeStoreBooking(bookingId);
+            // router.refresh();
         } catch (error) {
             console.error(error);
         }
@@ -109,7 +116,8 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         if (!confirm("Are you sure you want to cancel this booking?")) return;
         try {
             await updateBookingStatus(bookingId, "Cancelled");
-            router.refresh();
+            updateStoreBooking(bookingId, "Cancelled");
+            // router.refresh();
         } catch (error) {
             console.error(error);
         }

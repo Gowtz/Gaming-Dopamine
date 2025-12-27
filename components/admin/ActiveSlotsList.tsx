@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { extendBooking, deleteBooking } from "@/lib/actions/booking-actions";
 import { updateBookingStatus } from "@/lib/actions/admin-actions";
-import { useRouter } from "next/navigation";
+import { useAdminStore } from "@/hooks/useAdminStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -64,16 +64,19 @@ interface ActiveSlot {
 }
 
 interface ActiveSlotsListProps {
-    slots: any[]; // Using any to avoid drift with prisma types in linter
+    slots: any[];
 }
 
 export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
-    const router = useRouter();
+    const {
+        updateBookingStatus: updateStoreBooking,
+        deleteBooking: removeStoreBooking,
+        updateBookingFields
+    } = useAdminStore();
     const { data: session } = useSession();
     const [extending, setExtending] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: "extend" | "delete", id: string } | null>(null);
-    // Force re-render every minute to update progress bars
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -81,7 +84,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
         return () => clearInterval(timer);
     }, []);
 
-    // New State for Dialogs
     const [extensionData, setExtensionData] = useState<{
         bookingId: string;
         reason: string;
@@ -153,8 +155,9 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
         setExtending(bookingId);
         try {
             await updateBookingStatus(bookingId, "Completed", amount, method);
+            // Optimistic Update - Positional Args fixed
+            updateStoreBooking(bookingId, "Completed", amount, method);
             setPaymentModal(null);
-            router.refresh();
         } catch (error) {
             console.error("Failed to complete session:", error);
         } finally {
@@ -170,37 +173,40 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
     const handleExtend = async () => {
         if (!extensionData) return;
 
-        // Log attempt
         console.log("Attempting extension:", { extensionData, override, sessionUser: session?.user });
 
         setExtending(extensionData.bookingId);
 
         try {
-            // Use safe access for adminId, fallback to "admin" if session not fully hydrated
             const adminId = (session?.user as any)?.id || "admin";
 
             const result = await extendBooking(
                 extensionData.bookingId,
                 extensionData.minutes,
                 adminId,
-                "Extended via Admin UI", // Default reason
+                "Extended via Admin UI",
                 extensionData.paymentMethod,
-                override // Force logic
+                override
             );
 
             console.log("Extension result:", result);
 
             if (result.success) {
-                router.refresh();
+                const currentSlot = slots.find(s => s.id === extensionData.bookingId);
+                if (currentSlot) {
+                    // Use updateBookingFields for generic updates
+                    updateBookingFields(extensionData.bookingId, {
+                        duration: currentSlot.duration + extensionData.minutes,
+                        isAdminExtended: true
+                    });
+                }
                 resetState();
             } else {
-                // Handle conflict or error
                 if (result.conflict) {
                     setConflictData({ user: result.conflict.user });
                 } else {
                     setErrorMsg(result.error || "Unknown error");
                 }
-                // Don't close dialog, let user override
             }
         } catch (error) {
             console.error("Failed to extend booking:", error);
@@ -215,7 +221,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
         try {
             const result = await deleteBooking(bookingId);
             if (result.success) {
-                router.refresh();
+                removeStoreBooking(bookingId);
             }
         } catch (error) {
             console.error("Failed to delete booking:", error);
@@ -242,9 +248,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                     const timeRemaining = getTimeRemaining(endTime);
                     const isEnding = timeRemaining.includes("m left") && !timeRemaining.includes("h");
                     const progress = getProgress(startDate, slot.duration);
-
-                    // Progress bar color logic
-                    const progressColor = isEnding ? "rgba(234, 179, 8, 0.15)" : "rgba(34, 197, 94, 0.15)"; // Yellow if ending, Green otherwise
+                    const progressColor = isEnding ? "rgba(234, 179, 8, 0.15)" : "rgba(34, 197, 94, 0.15)";
 
                     return (
                         <div
@@ -309,7 +313,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                         bookingId: slot.id,
                                         minutes: 30,
                                         reason: "",
-                                        paymentMethod: "OFFLINE_CASH" // Default
+                                        paymentMethod: "OFFLINE_CASH"
                                     })}
                                     disabled={extending === slot.id}
                                     className="shrink-0 h-9 bg-background/80 hover:bg-background border shadow-sm"
@@ -329,7 +333,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                 })}
             </div>
 
-            {/* Extension Dialog */}
             <Dialog open={!!extensionData} onOpenChange={(open) => !open && resetState()}>
                 <DialogContent className="admin-theme sm:max-w-[425px]">
                     <DialogHeader>
@@ -340,7 +343,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                     </DialogHeader>
                     {extensionData && (
                         <div className="grid gap-6 py-4">
-                            {/* Duration Chips */}
                             <div className="space-y-2">
                                 <Label>Duration</Label>
                                 <div className="flex gap-2">
@@ -378,7 +380,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                 </div>
                             )}
 
-                            {/* Conflict Warning */}
                             {conflictData && (
                                 <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 space-y-3">
                                     <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
@@ -406,7 +407,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                     </div>
                                 </div>
                             )}
-                            {/* Generic Error Warning if just text */}
                             {!conflictData && errorMsg && (
                                 <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 flex flex-col gap-2">
                                     <div className="text-sm text-destructive font-medium">{errorMsg}</div>
@@ -435,7 +435,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Payment Modal */}
             <Dialog open={!!paymentModal} onOpenChange={(open) => !open && setPaymentModal(null)}>
                 <DialogContent className="admin-theme">
                     <DialogHeader>
@@ -469,7 +468,6 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                             <p className="text-xs text-muted-foreground mt-2">Session Duration: {paymentModal?.slot.duration} mins</p>
                         </div>
 
-                        {/* Payment Selection Toggle */}
                         <div className="w-full space-y-4 border-t pt-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">Payment Type</span>

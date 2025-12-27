@@ -12,7 +12,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { updateBookingStatus } from "@/lib/actions/admin-actions";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
+import { useAdminStore } from "@/hooks/useAdminStore";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef } from "react";
@@ -44,7 +45,8 @@ interface FinishedSessionsListProps {
 }
 
 export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
-    const router = useRouter();
+    // const router = useRouter(); 
+    const { updateBookingStatus: updateStoreBooking } = useAdminStore();
     const [confirming, setConfirming] = useState<string | null>(null);
     const [paymentModal, setPaymentModal] = useState<{
         slot: FinishedSlot;
@@ -70,8 +72,9 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
         setConfirming(bookingId);
         try {
             await updateBookingStatus(bookingId, "Completed", amount, method);
+            updateStoreBooking(bookingId, "Completed", amount, method);
             setPaymentModal(null);
-            router.refresh();
+            // router.refresh();
         } catch (error) {
             console.error("Failed to complete session:", error);
             alert("Failed to close session");

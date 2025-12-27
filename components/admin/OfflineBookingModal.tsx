@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { BookingSource } from "@prisma/client";
 import { format, addMinutes, isAfter, isBefore, isEqual, parse, startOfToday } from "date-fns";
 import { Switch } from "@/components/ui/switch";
+import { useAdminStore } from "@/hooks/useAdminStore";
 
 interface OfflineBookingModalProps {
     users: any[];
@@ -180,6 +181,11 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
     const timingWarning = checkSlotTiming();
     const nowConflict = checkConflict(new Date());
 
+    const { addBooking } = useAdminStore();
+    // const router = useRouter(); // Removed for CSR
+
+    // ... (logic)
+
     const handleCreateBooking = async () => {
         if (!selectedSlotId || (currentConflict && !overrideTiming)) return;
         setLoading(true);
@@ -195,7 +201,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                 finalStartTime = customStartTime;
             }
 
-            await createOfflineBooking(
+            const newBooking = await createOfflineBooking(
                 selectedUser?.id || null,
                 selectedSlotId,
                 finalDuration,
@@ -203,9 +209,14 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                 BookingSource.OFFLINE,
                 overrideTiming
             );
+
+            if (newBooking) {
+                addBooking(newBooking);
+            }
+
             setOpen(false);
             setShowConfirm(false);
-            router.refresh();
+            // router.refresh();
         } catch (error) {
             console.error(error);
         } finally {

@@ -3,6 +3,126 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Role, BookingSource, Platform } from "@prisma/client";
+import { Users, DollarSign, CalendarCheck, Gamepad2 } from "lucide-react";
+
+export async function getAdminDashboardData() {
+    try {
+        const now = new Date();
+
+        // 1. Parallel Fetching for Efficiency
+        const [
+            // Stats
+            userCount,
+            activeBookingsCount,
+            totalRevenueAgg,
+
+            // Lists
+            finishedSessions, // "Completed" status in DB
+            allUpcomingBookings, // "Upcoming" status (includes currently running and future)
+            users,
+            slots, // Available slots
+            allSlots,
+            games,
+            historyBookings
+        ] = await Promise.all([
+            prisma.user.count({ where: { role: "USER" } }),
+            prisma.booking.count({ where: { status: "Upcoming" } }),
+            prisma.booking.aggregate({
+                _sum: { totalPrice: true },
+                where: { status: "Completed" }
+            }),
+            prisma.booking.findMany({
+                where: { status: "Completed" },
+                include: { slot: true }
+            }),
+            prisma.booking.findMany({
+                where: { status: "Upcoming" },
+                include: {
+                    user: {
+                        select: {
+                            id: true, name: true, email: true, image: true,
+                            membership: { select: { isSubscriber: true, totalHours: true, utilizedHours: true } }
+                        }
+                    },
+                    slot: true
+                },
+                orderBy: { date: 'asc' }
+            }),
+            prisma.user.findMany({
+                include: {
+                    membership: true,
+                    bookings: { take: 1, orderBy: { createdAt: 'desc' } }
+                }
+            }),
+            prisma.slot.findMany({ where: { status: "AVAILABLE" } }),
+            prisma.slot.findMany({ orderBy: { startTime: 'asc' } }),
+            prisma.game.findMany({ orderBy: { title: 'asc' } }),
+            prisma.booking.findMany({
+                take: 50,
+                orderBy: { createdAt: 'desc' },
+                include: { user: true, slot: true }
+            })
+        ]);
+
+        // 2. Calculate Revenue
+        const totalRevenue = finishedSessions.reduce((acc, booking) => {
+            const price = (booking as any).totalPrice !== null ? Number((booking as any).totalPrice) : 0;
+            if (price > 0) return acc + price;
+
+            // Fallback estimation
+            const pricePerHour = booking.slot?.price || 100;
+            return acc + Math.ceil((booking.duration / 60) * pricePerHour);
+        }, 0);
+
+        const slotUtilization = 68; // Mock/Calculation
+
+        // 3. Process Bookings Lists
+        const activeSlots = allUpcomingBookings.filter(booking => {
+            const startTime = new Date(booking.date);
+            const endTime = new Date(booking.date);
+            endTime.setMinutes(endTime.getMinutes() + booking.duration);
+            return startTime <= now && endTime > now;
+        });
+
+        const finishedSlots = allUpcomingBookings.filter(booking => {
+            const endTime = new Date(booking.date);
+            endTime.setMinutes(endTime.getMinutes() + booking.duration);
+            return endTime <= now;
+        });
+
+        const upcomingSlots = allUpcomingBookings.filter(booking => {
+            const startTime = new Date(booking.date);
+            return startTime > now;
+        });
+
+        const recentBookings = historyBookings.slice(0, 7);
+
+        return {
+            stats: [
+                { label: "Total Players", value: userCount, desc: "+12% from last month", iconName: "Users" },
+                { label: "Upcoming Bookings", value: activeBookingsCount, desc: "+5% from last week", iconName: "CalendarCheck" },
+                { label: "Total Revenue", value: `₹${totalRevenue.toFixed(2)}`, desc: "+18% from last month", iconName: "DollarSign" },
+                { label: "Slot Utilization", value: `${slotUtilization}%`, desc: "-2% from last hour", iconName: "Gamepad2" },
+            ],
+            totalPlayers: userCount,
+            activeBookings: activeBookingsCount,
+            totalRevenue: `₹${totalRevenue.toFixed(2)}`,
+            slotUtilization,
+            activeSlots,
+            finishedSlots,
+            upcomingSlots,
+            recentBookings,
+            users,
+            slots: allSlots, // Passing ALL slots to store as 'slots'
+            games,
+            historyBookings
+        };
+
+    } catch (error) {
+        console.error("Failed to fetch admin dashboard data:", error);
+        throw new Error("Failed to load dashboard data");
+    }
+}
 
 export async function updateBookingStatus(
     id: string,
@@ -11,13 +131,11 @@ export async function updateBookingStatus(
     paymentMethod?: string
 ) {
     try {
-        // 1. Update status via ORM
         await prisma.booking.update({
             where: { id },
             data: { status }
         });
 
-        // 2. Direct SQL update for potentially out-of-sync fields
         if (totalPrice !== undefined && paymentMethod !== undefined) {
             await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "totalPrice" = $1, "paymentMethod" = $2 WHERE id = $3`, totalPrice, paymentMethod, id);
         } else if (totalPrice !== undefined) {
@@ -64,16 +182,13 @@ export async function createOfflineBooking(
     const parseTimeToMinutes = (timeStr: string) => {
         if (!timeStr) return 0;
         try {
-            // Try 12h format first
             if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) {
                 const date = parse(timeStr.toUpperCase(), "hh:mm a", new Date());
                 if (!isNaN(date.getTime())) return date.getHours() * 60 + date.getMinutes();
             }
-            // Try 24h format
             const date = parse(timeStr, "HH:mm", new Date());
             if (!isNaN(date.getTime())) return date.getHours() * 60 + date.getMinutes();
 
-            // Fallback: manual split
             const clean = timeStr.replace(/[^0-9:]/g, '');
             const [h, m] = clean.split(':').map(Number);
             return (h || 0) * 60 + (m || 0);
@@ -89,13 +204,11 @@ export async function createOfflineBooking(
     const bookingEndVal = bookingStartVal + bookingDuration;
 
     const serverNow = new Date();
-    console.log(`[BOOKING DEBUG] Server Time: ${format(serverNow, "HH:mm")}, Attempt: ${bookingStartTimeStr} (${bookingStartVal}m), Duration: ${bookingDuration}m`);
 
     if (!force && (bookingStartVal < slotStartVal || bookingEndVal > slotEndVal)) {
         throw new Error(`Booking must fit within slot window (${slot.startTime} - ${slot.endTime})`);
     }
 
-    // 3. Conflict Rules: No partial overlaps
     const existingBookings = await prisma.booking.findMany({
         where: {
             slotId,
@@ -112,25 +225,19 @@ export async function createOfflineBooking(
         const bStartVal = parseTimeToMinutes(b.startTime as string);
         const bEndVal = bStartVal + b.duration;
 
-        // Check for overlap [start, end]
-        // True overlap: (StartA < EndB) && (EndA > StartB)
         if (bookingStartVal < bEndVal && bookingEndVal > bStartVal) {
-            console.warn(`[CONFLICT] ID: ${b.id}, Attempt: ${bookingStartVal}-${bookingEndVal}, Existing: ${bStartVal}-${bEndVal}`);
             if (!force) {
                 const conflictTime = b.startTime || "another session";
                 throw new Error(`Time conflict with session at ${conflictTime} (${b.duration} mins)`);
             }
         }
     }
-    // Even when you selected "Start @ {time}", the server was saving the session's main date field as "Right Now". Because the system looks at that date to decide if a session is active, it would immediately mark the booking as "In Progress" because "Now" is technically within the start/end window of a session you just created.
 
-
-    // Final Date calculation: Combine today's date with the chosen start time
     const finalDate = new Date();
     const [h, m] = [Math.floor(bookingStartVal / 60), bookingStartVal % 60];
     finalDate.setHours(h, m, 0, 0);
 
-    await (prisma.booking as any).create({
+    const booking = await (prisma.booking as any).create({
         data: {
             userId: (userId || null) as any,
             slotId,
@@ -141,10 +248,20 @@ export async function createOfflineBooking(
             status: "Upcoming",
             source: source,
         },
+        include: {
+            user: {
+                select: {
+                    id: true, name: true, email: true, image: true,
+                    membership: { select: { isSubscriber: true, totalHours: true, utilizedHours: true } }
+                }
+            },
+            slot: true
+        }
     });
 
     revalidatePath("/admin/bookings");
     revalidatePath("/admin");
+    return booking;
 }
 
 export async function updateUserRole(userId: string, role: Role) {
@@ -168,7 +285,6 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
 export async function toggleUserSubscription(userId: string, isSubscriber: boolean) {
     let expiresAt = null;
     if (isSubscriber) {
-        // Set to one month from today minus one day
         const now = new Date();
         expiresAt = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate() - 1, 23, 59, 59);
     }

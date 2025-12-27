@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Platform } from "@prisma/client";
 import { createSlot, updateSlot, getGames } from "@/lib/actions/slot-actions";
+import { useAdminStore } from "@/hooks/useAdminStore";
 import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,8 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
         );
     };
 
+    const { addSlot, updateSlot: updateStoreSlot } = useAdminStore();
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
@@ -87,8 +90,13 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
                         set: gameIds.map(id => ({ id }))
                     }
                 });
+                // Optimistic / Store update
+                updateStoreSlot(slot.id, updateData);
             } else {
-                await createSlot(data);
+                const newSlot = await createSlot(data);
+                if (newSlot) {
+                    addSlot(newSlot);
+                }
             }
 
             if (onSuccess) {
@@ -96,7 +104,7 @@ export default function SlotForm({ slot, onSuccess }: SlotFormProps = {}) {
             } else {
                 router.push("/admin/slots");
             }
-            router.refresh();
+            // router.refresh();
         } catch (error) {
             console.error(error);
         } finally {
