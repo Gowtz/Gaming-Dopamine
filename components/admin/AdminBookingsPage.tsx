@@ -14,6 +14,22 @@ import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
 import { FinishedSessionsList } from "@/components/admin/FinishedSessionsList";
 import { Filter, Search, Calendar as CalendarIcon, Download, Clock } from "lucide-react";
 
+import { format, isSameDay } from "date-fns";
+import { cn } from "@/lib/utils";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+
 export default function AdminBookingsPage() {
     const {
         isLoading,
@@ -29,7 +45,7 @@ export default function AdminBookingsPage() {
 
     const [filterSearch, setFilterSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
-    const [filterDate, setFilterDate] = useState("");
+    const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
         if (!historyBookings.length) {
@@ -55,8 +71,8 @@ export default function AdminBookingsPage() {
         const matchesSearch = !filterSearch ||
             b.user?.name?.toLowerCase().includes(filterSearch.toLowerCase()) ||
             b.user?.email?.toLowerCase().includes(filterSearch.toLowerCase());
-        const matchesStatus = !filterStatus || b.status === filterStatus;
-        const matchesDate = !filterDate || new Date(b.date).toISOString().startsWith(filterDate);
+        const matchesStatus = !filterStatus || filterStatus === "all" || b.status === filterStatus;
+        const matchesDate = !filterDate || isSameDay(new Date(b.date), filterDate);
         return matchesSearch && matchesStatus && matchesDate;
     });
 
@@ -180,33 +196,47 @@ export default function AdminBookingsPage() {
                                     />
                                 </div>
 
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="flex h-10 w-[160px] items-center justify-between rounded-md border-none bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                >
-                                    <option value="">Status: All History</option>
-                                    <option value="Completed">Completed</option>
-                                    <option value="Cancelled">Cancelled</option>
-                                </select>
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="w-[180px] bg-muted/50 border-none h-10">
+                                        <SelectValue placeholder="Status: All History" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Status: All History</SelectItem>
+                                        <SelectItem value="Completed">Completed</SelectItem>
+                                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                    </SelectContent>
+                                </Select>
 
-                                <div className="relative w-[180px]">
-                                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                                    <Input
-                                        type="date"
-                                        value={filterDate}
-                                        onChange={(e) => setFilterDate(e.target.value)}
-                                        className="pl-10 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary h-10 w-full"
-                                    />
-                                </div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-[240px] pl-3 text-left font-normal bg-muted/50 border-none h-10 justify-start",
+                                                !filterDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {filterDate ? format(filterDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={filterDate}
+                                            onSelect={setFilterDate}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
 
-                                {(filterSearch || filterStatus || filterDate) && (
+                                {(filterSearch || (filterStatus && filterStatus !== "all") || filterDate) && (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
                                         className="h-10 px-4 text-muted-foreground hover:text-foreground"
-                                        onClick={() => { setFilterSearch(""); setFilterStatus(""); setFilterDate(""); }}
+                                        onClick={() => { setFilterSearch(""); setFilterStatus(""); setFilterDate(undefined); }}
                                     >
                                         Clear
                                     </Button>
