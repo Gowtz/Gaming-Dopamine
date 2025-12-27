@@ -14,7 +14,7 @@ import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
 import { FinishedSessionsList } from "@/components/admin/FinishedSessionsList";
 import { Filter, Search, Calendar as CalendarIcon, Download, Clock } from "lucide-react";
 
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, isToday, isSameWeek, isSameMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
     Select,
@@ -62,6 +62,25 @@ export default function AdminBookingsPage() {
         }
     }, [historyBookings.length, setData, setLoading]);
 
+    const [timeRange, setTimeRange] = useState("day");
+
+    // Stats Filter Logic
+    const filterByTimeRange = (bookings: any[]) => {
+        if (timeRange === "all") return bookings;
+
+        const now = new Date();
+        return bookings.filter(b => {
+            const date = new Date(b.date);
+            if (timeRange === "day") return isToday(date);
+            if (timeRange === "week") return isSameWeek(date, now, { weekStartsOn: 1 }); // Monday start
+            if (timeRange === "month") return isSameMonth(date, now);
+            return true;
+        });
+    };
+
+    const statsBookings = filterByTimeRange(historyBookings);
+    const statsUpcoming = filterByTimeRange(upcomingSlots);
+
     if (isLoading) {
         return <TableSkeleton />;
     }
@@ -94,31 +113,48 @@ export default function AdminBookingsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Bookings (Fetched)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{historyBookings.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{historyBookings.filter(b => b.status === 'Completed').length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{upcomingSlots.length}</div>
-                    </CardContent>
-                </Card>
+            {/* Time Range Filter & Stats */}
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                    <Select value={timeRange} onValueChange={setTimeRange}>
+                        <SelectTrigger className="w-[180px] bg-background">
+                            <SelectValue placeholder="Time Range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="day">Today</SelectItem>
+                            <SelectItem value="week">This Week</SelectItem>
+                            <SelectItem value="month">This Month</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{statsBookings.length}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{statsBookings.filter(b => b.status === 'Completed').length}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{statsUpcoming.length}</div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
             {/* Tabs for Booking Management */}
