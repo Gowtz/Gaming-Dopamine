@@ -31,12 +31,14 @@ import {
 import { toggleUserBlock, toggleUserSubscription, updateUserRole } from "@/lib/actions/admin-actions";
 import { Role } from "@prisma/client";
 import PlayerDetailsModal from "./PlayerDetailsModal";
+import { useAdminStore } from "@/hooks/useAdminStore";
 
 interface PlayerListClientProps {
     users: any[];
 }
 
 export default function PlayerListClient({ users }: PlayerListClientProps) {
+    const { updateUser } = useAdminStore();
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -142,7 +144,9 @@ export default function PlayerListClient({ users }: PlayerListClientProps) {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="admin-theme">
                                         <DropdownMenuItem onClick={async () => {
-                                            await updateUserRole(user.id, user.role === 'ADMIN' ? Role.USER : Role.ADMIN);
+                                            const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
+                                            updateUser(user.id, { role: newRole }); // Optimistic
+                                            await updateUserRole(user.id, newRole as Role);
                                         }}>
                                             {user.role === 'ADMIN' ? (
                                                 <><UserIcon className="w-4 h-4 mr-2" /> Demote to User</>
@@ -156,7 +160,9 @@ export default function PlayerListClient({ users }: PlayerListClientProps) {
                                         <DropdownMenuItem
                                             className={user.isBlocked ? 'text-green-500' : 'text-destructive'}
                                             onClick={async () => {
-                                                await toggleUserBlock(user.id, !user.isBlocked);
+                                                const newBlocked = !user.isBlocked;
+                                                updateUser(user.id, { isBlocked: newBlocked }); // Optimistic
+                                                await toggleUserBlock(user.id, newBlocked);
                                             }}
                                         >
                                             {user.isBlocked ? (
@@ -167,7 +173,16 @@ export default function PlayerListClient({ users }: PlayerListClientProps) {
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem onClick={async () => {
-                                            await toggleUserSubscription(user.id, !user.membership?.isSubscriber);
+                                            const isSubscriber = !user.membership?.isSubscriber;
+                                            // Optimistic update for membership
+                                            updateUser(user.id, {
+                                                membership: {
+                                                    ...user.membership,
+                                                    isSubscriber,
+                                                    tier: isSubscriber ? "Gold" : user.membership?.tier
+                                                }
+                                            });
+                                            await toggleUserSubscription(user.id, isSubscriber);
                                         }}>
                                             <Trophy className="w-4 h-4 mr-2" />
                                             {user.membership?.isSubscriber ? "Cancel Subscription" : "Activate Subscription"}

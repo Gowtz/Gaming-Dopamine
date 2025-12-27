@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAdminStore } from "@/hooks/useAdminStore";
-import { getAdminDashboardData, deleteGame } from "@/lib/actions/admin-actions";
+import { getAdminDashboardData, deleteGame as removeGameFromServer } from "@/lib/actions/admin-actions";
 import { DashboardSkeleton } from "@/components/admin/skeletons"; // Or similar skeleton
 import GameSearchModal from "@/components/admin/GameSearchModal";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ export default function AdminGamesPage() {
         games,
         setData,
         setLoading,
-        deleteGame: removeGameFromStore // Renamed action
+        deleteGame
     } = useAdminStore();
 
     useEffect(() => {
@@ -37,8 +37,8 @@ export default function AdminGamesPage() {
 
     const handleDelete = async (id: string) => {
         try {
-            await deleteGame(id);
-            removeGameFromStore(id); // Optimistic update
+            deleteGame(id); // Optimistic update
+            await removeGameFromServer(id);
         } catch (error) {
             console.error(error);
         }

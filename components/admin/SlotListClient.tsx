@@ -46,6 +46,16 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -76,6 +86,7 @@ interface Slot {
 export default function SlotListClient({ slots }: { slots: Slot[] }) {
     const [editingSlot, setEditingSlot] = useState<Slot | null>(null);
     const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
+    const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
     const router = useRouter();
 
     const handleToggleStatus = async (slotId: string, currentStatus: string) => {
@@ -93,9 +104,12 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm("Are you sure you want to delete this slot?")) {
+        try {
             await deleteSlot(id);
+            setSlotToDelete(null);
             router.refresh();
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -175,7 +189,7 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
                                                 className="text-destructive focus:text-destructive"
-                                                onClick={() => handleDelete(slot.id)}
+                                                onClick={() => setSlotToDelete(slot.id)}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 Delete Slot
@@ -239,6 +253,30 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                     </Card>
                 </div>
             )}
+
+            <AlertDialog open={!!slotToDelete} onOpenChange={(open) => !open && setSlotToDelete(null)}>
+                <AlertDialogContent className="admin-theme">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the slot from the database.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => {
+                                if (slotToDelete) {
+                                    handleDelete(slotToDelete);
+                                }
+                            }}
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

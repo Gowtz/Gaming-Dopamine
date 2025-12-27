@@ -28,6 +28,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef } from "react";
@@ -47,6 +57,37 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         amount: number;
         isCustom?: boolean;
     } | null>(null);
+    const [confirmationModal, setConfirmationModal] = useState<{
+        isOpen: boolean;
+        type: 'delete' | 'cancel';
+        bookingId: string;
+    } | null>(null);
+
+    // ... helpers ...
+
+    // ... getStatusBadge, getSourceBadge, getSessionCost ...
+
+    const handleDelete = async (bookingId: string) => {
+        try {
+            await deleteBooking(bookingId);
+            removeStoreBooking(bookingId);
+            setConfirmationModal(null);
+            // router.refresh();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleCancel = async (bookingId: string) => {
+        try {
+            await updateBookingStatus(bookingId, "Cancelled");
+            updateStoreBooking(bookingId, "Cancelled");
+            setConfirmationModal(null);
+            // router.refresh();
+        } catch (error) {
+            console.error(error);
+        }
+    };
     const customInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -55,6 +96,8 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
             customInputRef.current?.select();
         }
     }, [paymentModal?.isCustom]);
+
+    // ... helpers ...
 
     // ... helpers ...
 
@@ -101,27 +144,7 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         }
     };
 
-    const handleDelete = async (bookingId: string) => {
-        if (!confirm("Are you sure you want to delete this booking?")) return;
-        try {
-            await deleteBooking(bookingId);
-            removeStoreBooking(bookingId);
-            // router.refresh();
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
-    const handleCancel = async (bookingId: string) => {
-        if (!confirm("Are you sure you want to cancel this booking?")) return;
-        try {
-            await updateBookingStatus(bookingId, "Cancelled");
-            updateStoreBooking(bookingId, "Cancelled");
-            // router.refresh();
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
     if (bookings.length === 0) {
         return (
@@ -241,11 +264,11 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                                             </DropdownMenuItem>
                                         )}
                                         {booking.status === 'Upcoming' && (
-                                            <DropdownMenuItem className="text-destructive" onClick={() => handleCancel(booking.id)}>
+                                            <DropdownMenuItem className="text-destructive" onClick={() => setConfirmationModal({ isOpen: true, type: 'cancel', bookingId: booking.id })}>
                                                 <XCircle className="w-4 h-4 mr-2" /> Cancel Booking
                                             </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(booking.id)}>
+                                        <DropdownMenuItem className="text-destructive" onClick={() => setConfirmationModal({ isOpen: true, type: 'delete', bookingId: booking.id })}>
                                             <Trash2 className="w-4 h-4 mr-2" /> Delete Booking
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -331,6 +354,36 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Confirmation Modal */}
+            <AlertDialog open={!!confirmationModal} onOpenChange={(open) => !open && setConfirmationModal(null)}>
+                <AlertDialogContent className="admin-theme">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {confirmationModal?.type === 'delete'
+                                ? "This action cannot be undone. This will permanently delete the booking from the database."
+                                : "This will cancel the booking but keep a record of it. The slot will become available for others."
+                            }
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (confirmationModal?.type === 'delete') {
+                                    handleDelete(confirmationModal.bookingId);
+                                } else if (confirmationModal?.type === 'cancel') {
+                                    handleCancel(confirmationModal.bookingId);
+                                }
+                            }}
+                            className={confirmationModal?.type === 'delete' ? "bg-destructive hover:bg-destructive/90" : ""}
+                        >
+                            {confirmationModal?.type === 'delete' ? "Delete" : "Confirm Cancel"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

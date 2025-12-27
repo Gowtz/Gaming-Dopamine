@@ -106,11 +106,11 @@ export default function AdminBookingsPage() {
             </div>
 
             {/* Tabs for Booking Management */}
-            <Tabs defaultValue="active" className="w-full">
+            <Tabs defaultValue="history" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
+                    <TabsTrigger value="history">Booking History</TabsTrigger>
                     <TabsTrigger value="active">Active Sessions</TabsTrigger>
                     <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                    <TabsTrigger value="history">Booking History</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="active" className="mt-6 space-y-6">

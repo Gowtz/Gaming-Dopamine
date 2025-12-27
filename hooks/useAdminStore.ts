@@ -50,7 +50,10 @@ interface AdminState {
     addBooking: (booking: any) => void;
     addSlot: (slot: Slot) => void;
     updateSlot: (id: string, data: Partial<Slot>) => void;
+    addSlots: (slots: Slot[]) => void;
     deleteGame: (id: string) => void;
+    addGame: (game: Game) => void;
+    updateUser: (id: string, data: Partial<User>) => void;
 }
 
 export const useAdminStore = create<AdminState>((set) => ({
@@ -120,5 +123,17 @@ export const useAdminStore = create<AdminState>((set) => ({
 
     deleteGame: (id) => set((state) => ({
         games: state.games.filter(g => g.id !== id)
+    })),
+
+    addGame: (game) => set((state) => ({
+        games: [...state.games, game]
+    })),
+
+    updateUser: (id, data) => set((state) => ({
+        users: state.users.map(u => u.id === id ? { ...u, ...data } : u)
+    })),
+
+    addSlots: (newSlots) => set((state) => ({
+        slots: [...state.slots, ...newSlots]
     })),
 }));

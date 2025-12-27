@@ -71,9 +71,24 @@ export async function bulkCreateSlots(data: {
         current.setDate(current.getDate() + 1);
     }
 
+    const timestamp = new Date();
     await prisma.slot.createMany({ data: slots });
+
+    // Fetch and return the newly created slots to update the store
+    // We use createdAt to identify the slots we just added
+    const createdSlots = await prisma.slot.findMany({
+        where: {
+            createdAt: {
+                gte: timestamp
+            },
+            type: data.type,
+            startTime: data.startTime,
+            endTime: data.endTime
+        }
+    });
+
     revalidatePath("/admin/slots");
-    return { count: slots.length };
+    return createdSlots;
 }
 
 export async function updateSlot(id: string, data: any) {

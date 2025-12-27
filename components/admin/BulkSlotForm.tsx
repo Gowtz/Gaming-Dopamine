@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Platform } from "@prisma/client";
 import { bulkCreateSlots } from "@/lib/actions/slot-actions";
+import { useAdminStore } from "@/hooks/useAdminStore";
 import { Loader2, Layers } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function BulkSlotForm() {
+    const { addSlots } = useAdminStore();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -37,15 +39,20 @@ export default function BulkSlotForm() {
         e.preventDefault();
         setLoading(true);
         try {
-            await bulkCreateSlots({
+            const newSlots = await bulkCreateSlots({
                 ...formData,
                 startDate: new Date(formData.startDate),
                 endDate: new Date(formData.endDate),
                 price: Number(formData.price),
                 maxPlayers: Number(formData.maxPlayers),
             });
+
+            if (Array.isArray(newSlots)) {
+                addSlots(newSlots);
+            }
+
             router.push("/admin/slots");
-            router.refresh();
+            // router.refresh();
         } catch (error) {
             console.error(error);
         } finally {

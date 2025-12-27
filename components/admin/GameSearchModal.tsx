@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/select";
 import { Search, Plus, Loader2, Gamepad2 } from "lucide-react";
 import { addGame } from "@/lib/actions/admin-actions";
+import { useAdminStore } from "@/hooks/useAdminStore";
 
 export default function GameSearchModal() {
+    const { addGame: addGameToStore } = useAdminStore();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);
@@ -60,12 +62,16 @@ export default function GameSearchModal() {
 
     const handleAddGame = async (gameData: any) => {
         try {
-            await addGame({
+            const newGame = await addGame({
                 title: gameData.title,
                 image: gameData.image,
                 genre: gameData.genre,
                 platform: platform as any,
             });
+
+            if (newGame) {
+                addGameToStore(newGame);
+            }
             setOpen(false);
         } catch (error) {
             console.error(error);
