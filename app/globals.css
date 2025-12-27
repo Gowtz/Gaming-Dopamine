@@ -56,7 +56,10 @@
   Using high specificity (html.dark .admin-theme) to ensure global .dark doesn't 
   override the admin's professional Zinc look.
 */
-html .admin-theme,
+/* 
+ * Using high specificity (html.dark .admin-theme) to ensure global .dark doesn't 
+ * override the admin's professional Zinc look.
+ */
 html.dark .admin-theme {
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;

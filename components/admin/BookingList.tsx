@@ -264,11 +264,11 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                                             </DropdownMenuItem>
                                         )}
                                         {booking.status === 'Upcoming' && (
-                                            <DropdownMenuItem className="text-destructive" onClick={() => setConfirmationModal({ isOpen: true, type: 'cancel', bookingId: booking.id })}>
+                                            <DropdownMenuItem className="text-red-600 dark:text-red-500 focus:text-red-600 dark:focus:text-red-500" onClick={() => setConfirmationModal({ isOpen: true, type: 'cancel', bookingId: booking.id })}>
                                                 <XCircle className="w-4 h-4 mr-2" /> Cancel Booking
                                             </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem className="text-destructive" onClick={() => setConfirmationModal({ isOpen: true, type: 'delete', bookingId: booking.id })}>
+                                        <DropdownMenuItem className="text-red-600 dark:text-red-500 focus:text-red-600 dark:focus:text-red-500" onClick={() => setConfirmationModal({ isOpen: true, type: 'delete', bookingId: booking.id })}>
                                             <Trash2 className="w-4 h-4 mr-2" /> Delete Booking
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -377,7 +377,7 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                                     handleCancel(confirmationModal.bookingId);
                                 }
                             }}
-                            className={confirmationModal?.type === 'delete' ? "bg-destructive hover:bg-destructive/90" : ""}
+                            className={confirmationModal?.type === 'delete' ? "bg-destructive hover:bg-destructive/90 text-white" : ""}
                         >
                             {confirmationModal?.type === 'delete' ? "Delete" : "Confirm Cancel"}
                         </AlertDialogAction>

@@ -188,7 +188,7 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
-                                                className="text-destructive focus:text-destructive"
+                                                className="text-red-600 dark:text-red-500 focus:text-red-600 dark:focus:text-red-500"
                                                 onClick={() => setSlotToDelete(slot.id)}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -265,7 +265,7 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-destructive hover:bg-destructive/90 text-white"
                             onClick={() => {
                                 if (slotToDelete) {
                                     handleDelete(slotToDelete);

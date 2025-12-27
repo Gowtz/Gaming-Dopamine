@@ -81,6 +81,7 @@ export default function AdminGamesPage() {
                                     variant="destructive"
                                     size="icon"
                                     onClick={() => handleDelete(game.id)}
+                                    className="text-white hover:bg-destructive/90"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </Button>

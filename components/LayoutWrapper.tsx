@@ -48,10 +48,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     }
 
     return (
-        <>
+        <div className="dark contents">
             <Navbar />
             {children}
             <Footer />
-        </>
+        </div>
     );
 }
