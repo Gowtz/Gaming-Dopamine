@@ -4,11 +4,32 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Role, BookingSource, Platform } from "@prisma/client";
 
-export async function updateBookingStatus(id: string, status: string) {
-    await prisma.booking.update({
-        where: { id },
-        data: { status },
-    });
+export async function updateBookingStatus(
+    id: string,
+    status: string,
+    totalPrice?: number,
+    paymentMethod?: string
+) {
+    try {
+        // 1. Update status via ORM
+        await prisma.booking.update({
+            where: { id },
+            data: { status }
+        });
+
+        // 2. Direct SQL update for potentially out-of-sync fields
+        if (totalPrice !== undefined && paymentMethod !== undefined) {
+            await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "totalPrice" = $1, "paymentMethod" = $2 WHERE id = $3`, totalPrice, paymentMethod, id);
+        } else if (totalPrice !== undefined) {
+            await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "totalPrice" = $1 WHERE id = $2`, totalPrice, id);
+        } else if (paymentMethod !== undefined) {
+            await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "paymentMethod" = $1 WHERE id = $2`, paymentMethod, id);
+        }
+    } catch (err: any) {
+        console.error(`[PAYMENT ERROR] Update failed: ${err.message}`);
+        throw err;
+    }
+
     revalidatePath("/admin/bookings");
     revalidatePath("/admin");
 }

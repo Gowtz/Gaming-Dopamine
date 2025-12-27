@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { Filter, Search, Calendar as CalendarIcon, Download } from "lucide-react";
+import { Filter, Search, Calendar as CalendarIcon, Download, Clock } from "lucide-react";
 import BookingList from "@/components/admin/BookingList";
 import OfflineBookingModal from "@/components/admin/OfflineBookingModal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { revalidatePath } from "next/cache";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActiveSlotsList } from "@/components/admin/ActiveSlotsList";
+import { FinishedSessionsList } from "@/components/admin/FinishedSessionsList";
 
 interface BookingsPageProps {
     searchParams: {
@@ -28,6 +29,7 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
         prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
         prisma.slot.findMany({ where: { status: "AVAILABLE" } }),
         prisma.booking.findMany({
+            where: { status: "Upcoming" },
             include: { user: { include: { membership: true } }, slot: true },
             orderBy: { date: 'asc' }
         })
@@ -37,16 +39,21 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
 
     // Active Sessions (Start <= Now < End)
     const activeSlots = allBookings.filter(booking => {
-        if (booking.status !== "Upcoming") return false;
         const startTime = new Date(booking.date);
         const endTime = new Date(booking.date);
         endTime.setMinutes(endTime.getMinutes() + booking.duration);
         return startTime <= now && endTime > now;
     });
 
-    // Upcoming (Now < Start && status == "Upcoming")
+    // Finished Sessions (End <= Now) - Pending Checkout
+    const finishedSlots = allBookings.filter(booking => {
+        const endTime = new Date(booking.date);
+        endTime.setMinutes(endTime.getMinutes() + booking.duration);
+        return endTime <= now;
+    });
+
+    // Upcoming (Now < Start)
     const futureBookings = allBookings.filter(booking => {
-        if (booking.status !== "Upcoming") return false;
         const startTime = new Date(booking.date);
         return startTime > now;
     });
@@ -131,12 +138,30 @@ export default async function AdminBookingsPage(props: { searchParams: Promise<B
                     <TabsTrigger value="history">Booking History</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="active" className="mt-6">
+                <TabsContent value="active" className="mt-6 space-y-6">
+                    {/* Finished Sessions Section (Pending Checkout) */}
+                    {finishedSlots.length > 0 && (
+                        <Card className="border-red-500/20 bg-red-500/5 shadow-sm">
+                            <CardHeader>
+                                <CardTitle className="text-red-500 flex items-center gap-2">
+                                    <Clock className="w-5 h-5" />
+                                    Finished - Pending Checkout
+                                </CardTitle>
+                                <CardDescription className="text-red-600/80">
+                                    Sessions that have ended. Please collect payment to finalize.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <FinishedSessionsList slots={finishedSlots as any} />
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card>
                         <CardHeader>
-                            <CardTitle>Active Sessions</CardTitle>
+                            <CardTitle>Currently Playing</CardTitle>
                             <CardDescription>
-                                Currently running games.
+                                Live sessions in progress.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

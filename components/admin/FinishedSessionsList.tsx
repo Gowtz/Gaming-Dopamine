@@ -66,10 +66,10 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
         return Math.ceil((duration / 60) * pricePerHour);
     };
 
-    const handleComplete = async (bookingId: string) => {
+    const handleComplete = async (bookingId: string, amount?: number, method: string = "CASH") => {
         setConfirming(bookingId);
         try {
-            await updateBookingStatus(bookingId, "Completed");
+            await updateBookingStatus(bookingId, "Completed", amount, method);
             setPaymentModal(null);
             router.refresh();
         } catch (error) {
@@ -139,7 +139,7 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleComplete(slot.id)}
+                                    onClick={() => handleComplete(slot.id, 0, "SUBSCRIPTION")}
                                     disabled={confirming === slot.id}
                                 >
                                     {confirming === slot.id ? "..." : "Dismiss"}
@@ -212,11 +212,17 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 w-full mt-4">
-                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700"
+                                    onClick={() => paymentModal && handleComplete(paymentModal.slot.id, paymentModal.amount, "CASH")}
+                                    disabled={confirming === paymentModal?.slot.id}
+                                >
                                     <Wallet className="h-6 w-6" />
                                     Cash Received
                                 </Button>
-                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700" onClick={() => paymentModal && handleComplete(paymentModal.slot.id)}>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700"
+                                    onClick={() => paymentModal && handleComplete(paymentModal.slot.id, paymentModal.amount, "UPI")}
+                                    disabled={confirming === paymentModal?.slot.id}
+                                >
                                     <div className="font-bold text-lg">UPI</div>
                                     Online Transfer
                                 </Button>

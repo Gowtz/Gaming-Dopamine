@@ -133,11 +133,14 @@ model Booking {
   slot        Slot?    @relation(fields: [slotId], references: [id])
   source      BookingSource @default(ONLINE)
 
-  // Extension fields
+  // Extension & Finalization fields
   isAdminExtended      Boolean   @default(false)
   extensionReason      String?
   extensionAdminId      String?
   extensionPaymentMethod String? // OFFLINE_CASH, SUBSCRIPTION_HOURS
+  
+  totalPrice           Float?
+  paymentMethod        String? // CASH, UPI, ONLINE, SUBSCRIPTION
   
   auditLogs            BookingAuditLog[]
 }

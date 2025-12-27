@@ -49,7 +49,12 @@ export default async function AdminOverview() {
     });
 
     const totalRevenue = completedBookings.reduce((acc, booking) => {
-        const pricePerHour = booking.slot?.price || 100; // Fallback price
+        // Prioritize actual saved price (handles custom payments and subscription zeros)
+        if ((booking as any).totalPrice !== null && (booking as any).totalPrice !== undefined) {
+            return acc + Number((booking as any).totalPrice);
+        }
+        // Fallback for older bookings
+        const pricePerHour = booking.slot?.price || 100;
         const cost = Math.ceil((booking.duration / 60) * pricePerHour);
         return acc + cost;
     }, 0);
@@ -58,6 +63,8 @@ export default async function AdminOverview() {
         prisma.user.findMany({ select: { id: true, name: true, email: true, image: true, membership: true } }),
         prisma.slot.findMany({ where: { status: "AVAILABLE" } })
     ]);
+
+    console.log(`[REVENUE DEBUG] Total Completed: ${completedBookings.length}, Calculated Revenue: ${totalRevenue}`);
 
     const stats = [
         { label: "Total Players", value: totalPlayers, icon: Users, desc: "+12% from last month" },

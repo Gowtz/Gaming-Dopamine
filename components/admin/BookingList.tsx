@@ -82,15 +82,14 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
         return Math.ceil((duration / 60) * pricePerHour);
     };
 
-    const handleComplete = async (bookingId: string) => {
+    const handleComplete = async (bookingId: string, amount?: number, method: string = "CASH") => {
         setConfirming(bookingId);
         try {
-            await updateBookingStatus(bookingId, "Completed");
+            await updateBookingStatus(bookingId, "Completed", amount, method);
             setPaymentModal(null);
             router.refresh();
         } catch (error) {
             console.error("Failed to complete session:", error);
-            alert("Failed to close session");
         } finally {
             setConfirming(null);
         }
@@ -190,7 +189,23 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                             </TableCell>
                             <TableCell>
                                 <div className="font-semibold text-green-600">
-                                    ₹{getSessionCost(booking.duration, booking.slot?.price)}
+                                    {booking.paymentMethod === 'SUBSCRIPTION' ? (
+                                        <div className="flex flex-col items-start gap-1">
+                                            <span className="text-muted-foreground font-bold">-</span>
+                                            <Badge variant="secondary" className="text-[9px] bg-indigo-500/10 text-indigo-500 border-indigo-500/20 px-1 py-0 h-3.5 uppercase tracking-widest font-bold">
+                                                Subscription
+                                            </Badge>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-start gap-0.5">
+                                            <span>₹{booking.totalPrice ?? getSessionCost(booking.duration, booking.slot?.price)}</span>
+                                            {booking.paymentMethod && (
+                                                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">
+                                                    {booking.paymentMethod}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -205,7 +220,7 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                                         {booking.status !== 'Completed' && (
                                             <DropdownMenuItem onClick={() => {
                                                 if (booking.user?.membership?.isSubscriber) {
-                                                    handleComplete(booking.id);
+                                                    handleComplete(booking.id, 0, "SUBSCRIPTION");
                                                 } else {
                                                     setPaymentModal({
                                                         booking,
@@ -213,7 +228,8 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                                                     });
                                                 }
                                             }}>
-                                                <CheckCircle className="w-4 h-4 mr-2" /> Mark Completed
+                                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                <span>Mark Completed</span>
                                             </DropdownMenuItem>
                                         )}
                                         {booking.status === 'Upcoming' && (
@@ -286,11 +302,15 @@ export default function BookingList({ initialBookings: bookings }: BookingListPr
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 w-full mt-4">
-                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700" onClick={() => paymentModal && handleComplete(paymentModal.booking.id)} disabled={!!confirming}>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-green-50 hover:border-green-200 hover:text-green-700"
+                                    onClick={() => paymentModal && handleComplete(paymentModal.booking.id, paymentModal.amount, "CASH")}
+                                    disabled={!!confirming}>
                                     <Wallet className="h-6 w-6" />
                                     Cash Received
                                 </Button>
-                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700" onClick={() => paymentModal && handleComplete(paymentModal.booking.id)} disabled={!!confirming}>
+                                <Button variant="outline" className="h-20 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700"
+                                    onClick={() => paymentModal && handleComplete(paymentModal.booking.id, paymentModal.amount, "UPI")}
+                                    disabled={!!confirming}>
                                     <div className="font-bold text-lg">UPI</div>
                                     Online Transfer
                                 </Button>
