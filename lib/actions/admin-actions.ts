@@ -81,6 +81,10 @@ export async function getAdminDashboardData() {
 
         // 2. Calculate Revenue
         const totalRevenue = finishedSessions.reduce((acc, booking) => {
+            // Exclude subscription payments from revenue
+            const method = (booking as any).paymentMethod || "";
+            if (method.includes("SUBSCRIPTION")) return acc;
+
             const price = (booking as any).totalPrice !== null ? Number((booking as any).totalPrice) : 0;
             if (price > 0) return acc + price;
 
@@ -203,6 +207,24 @@ export async function createOfflineBooking(
     });
 
     if (!slot) throw new Error("Slot not found");
+
+    // Subscription Check
+    if (userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { membership: true }
+        });
+
+        const isSubscriber = user?.membership?.isSubscriber;
+        if (isSubscriber) {
+            const totalHours = user.membership?.totalHours || 0;
+            const utilized = user.membership?.utilizedHours || 0;
+
+            if (utilized >= totalHours) {
+                throw new Error(`Subscription exhausted: ${utilized}/${totalHours} hours used.`);
+            }
+        }
+    }
 
     const bookingStartTimeStr = startTime || (source === BookingSource.OFFLINE ? format(new Date(), "HH:mm") : slot.startTime);
     const bookingDuration = duration || slot.duration;

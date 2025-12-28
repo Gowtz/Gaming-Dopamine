@@ -253,29 +253,35 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                     return (
                         <div
                             key={slot.id}
-                            className="relative flex items-center justify-between p-4 rounded-xl border bg-card overflow-hidden transition-all hover:shadow-md"
+                            className="relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border bg-card overflow-hidden transition-all hover:shadow-md gap-4 md:gap-0"
                             style={{
                                 background: `linear-gradient(90deg, ${progressColor} ${progress}%, transparent ${progress}%)`
                             }}
                         >
-                            <div className="relative z-10 flex-1 min-w-0">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <p className="font-semibold text-base truncate">
+                            <div className="relative z-10 flex-1 min-w-0 w-full">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <Avatar className="h-8 w-8 border shadow-sm">
+                                        <AvatarImage src={slot.user?.image || ""} />
+                                        <AvatarFallback>
+                                            {slot.user?.name?.[0] || "G"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <p className="font-semibold text-base truncate max-w-[120px] md:max-w-none">
                                         {slot.user?.name || "Guest Player"}
                                     </p>
-                                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">
+                                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 whitespace-nowrap">
                                         Ongoing
                                     </Badge>
-                                    <Badge variant="outline" className="text-xs font-normal">
+                                    <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
                                         {slot.slot?.title || slot.type}
                                     </Badge>
                                     {slot.isAdminExtended && (
-                                        <Badge variant="secondary" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                        <Badge variant="secondary" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 whitespace-nowrap">
                                             Extended
                                         </Badge>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground pl-1">
                                     <div className="flex items-center gap-1.5">
                                         <Clock className="h-4 w-4" />
                                         <span>Ends {formatTime(endTime)}</span>
@@ -286,7 +292,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                 </div>
                             </div>
 
-                            <div className="relative z-10 flex items-center gap-2 ml-4">
+                            <div className="relative z-10 flex items-center gap-2 w-full md:w-auto md:ml-4">
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -301,7 +307,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                             });
                                         }
                                     }}
-                                    className="shrink-0 h-9 bg-background/80 hover:bg-background border shadow-sm text-green-600"
+                                    className="flex-1 md:flex-none h-9 bg-background/80 hover:bg-background border shadow-sm text-green-600"
                                 >
                                     <CheckCircle2 className="h-3 w-3 mr-1.5" />
                                     Checkout
@@ -316,7 +322,7 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                         paymentMethod: "OFFLINE_CASH"
                                     })}
                                     disabled={extending === slot.id}
-                                    className="shrink-0 h-9 bg-background/80 hover:bg-background border shadow-sm"
+                                    className="flex-1 md:flex-none h-9 bg-background/80 hover:bg-background border shadow-sm"
                                 >
                                     {extending === slot.id ? (
                                         "..."
@@ -327,11 +333,42 @@ export function ActiveSlotsList({ slots }: ActiveSlotsListProps) {
                                         </>
                                     )}
                                 </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="shrink-0 h-9 w-9 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => setConfirmAction({ type: "delete", id: slot.id })}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     );
                 })}
             </div>
+
+            <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the booking
+                            {confirmAction?.id && slots.find(s => s.id === confirmAction.id)?.user?.name ?
+                                ` for ${(slots.find(s => s.id === confirmAction.id)?.user?.name)}` : ""}.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => confirmAction && handleDelete(confirmAction.id)}
+                            disabled={!!deleting}
+                        >
+                            {deleting ? "Deleting..." : "Delete Booking"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <Dialog open={!!extensionData} onOpenChange={(open) => !open && resetState()}>
                 <DialogContent className="admin-theme sm:max-w-[425px]">

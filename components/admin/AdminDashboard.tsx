@@ -34,10 +34,17 @@ export default function AdminDashboard() {
         users,
         slots,
         setData,
-        setLoading
+        setLoading,
+        refreshBookingStatuses
     } = useAdminStore();
 
     useEffect(() => {
+        // Quick 1-minute interval to move bookings between tabs (Upcoming -> Active) locally
+        // This runs often to give immediate feedback when time passes scheduled start
+        const statusCheckInterval = setInterval(() => {
+            refreshBookingStatuses();
+        }, 10 * 1000); // Check every 10 seconds for responsiveness
+
         const fetchData = async () => {
             try {
                 const data = await getAdminDashboardData();
@@ -49,6 +56,41 @@ export default function AdminDashboard() {
         };
 
         fetchData();
+
+        // Alignment logic for 5-minute intervals
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        const milliseconds = now.getMilliseconds();
+
+        // Calculate ms until next 5-minute mark
+        // (5 - (minutes % 5)) gives minutes to next mark (1-5)
+        // We subtract seconds and ms to align exactly
+        const msUntilNextMultiple = (
+            (5 - (minutes % 5)) * 60 * 1000
+            - seconds * 1000
+            - milliseconds
+            + 2000 // Add 2-second buffer to ensure server time has passed the minute mark
+        );
+
+        let timeoutId: NodeJS.Timeout;
+        let intervalId: NodeJS.Timeout;
+
+        timeoutId = setTimeout(() => {
+            fetchData();
+
+            // Use setInterval to repeat every 5 mins after alignment
+            intervalId = setInterval(() => {
+                fetchData();
+            }, 5 * 60 * 1000);
+
+        }, msUntilNextMultiple);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (intervalId) clearInterval(intervalId);
+            clearInterval(statusCheckInterval); // Cleanup status checker
+        };
     }, []);
 
     const iconMap: Record<string, any> = {
