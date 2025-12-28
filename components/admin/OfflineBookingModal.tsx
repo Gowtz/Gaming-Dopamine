@@ -32,9 +32,10 @@ interface OfflineBookingModalProps {
     users: any[];
     slots: any[];
     existingBookings?: any[];
+    trigger?: React.ReactNode;
 }
 
-export default function OfflineBookingModal({ users, slots, existingBookings = [] }: OfflineBookingModalProps) {
+export default function OfflineBookingModal({ users, slots, existingBookings = [], trigger }: OfflineBookingModalProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -227,9 +228,11 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <Plus className="w-4 h-4" /> Create Offline Booking
-                </Button>
+                {trigger || (
+                    <Button variant="outline" className="gap-2">
+                        <Plus className="w-4 h-4" /> Create Offline Booking
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] admin-theme">
                 <DialogHeader>
