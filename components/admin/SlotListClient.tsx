@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import prisma from "@/lib/prisma";
 import {
     Calendar,
@@ -83,21 +84,36 @@ interface Slot {
     bookings?: any[];
 }
 
-export default function SlotListClient({ slots }: { slots: Slot[] }) {
+export default function SlotListClient({ slots: initialSlots }: { slots: Slot[] }) {
+    const [slots, setSlots] = useState<Slot[]>(initialSlots);
     const [editingSlot, setEditingSlot] = useState<Slot | null>(null);
     const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
     const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
     const router = useRouter();
 
+    useEffect(() => {
+        setSlots(initialSlots);
+    }, [initialSlots]);
+
     const handleToggleStatus = async (slotId: string, currentStatus: string) => {
         setTogglingStatus(slotId);
+        const newStatus = currentStatus === "MAINTENANCE" ? "AVAILABLE" : "MAINTENANCE";
+
+        // Optimistic update
+        setSlots(prevSlots => prevSlots.map(slot =>
+            slot.id === slotId ? { ...slot, status: newStatus } : slot
+        ));
+
         try {
-            const newStatus = currentStatus === "MAINTENANCE" ? "AVAILABLE" : "MAINTENANCE";
             // @ts-ignore
             await toggleSlotStatus(slotId, newStatus);
             router.refresh();
         } catch (error) {
             console.error(error);
+            // Revert on error
+            setSlots(prevSlots => prevSlots.map(slot =>
+                slot.id === slotId ? { ...slot, status: currentStatus } : slot
+            ));
         } finally {
             setTogglingStatus(null);
         }
@@ -151,14 +167,60 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
         }
     };
 
+    const sortedSlots = [...slots].sort((a, b) => {
+        if (a.status === "MAINTENANCE" && b.status !== "MAINTENANCE") return 1;
+        if (a.status !== "MAINTENANCE" && b.status === "MAINTENANCE") return -1;
+        return a.startTime.localeCompare(b.startTime);
+    });
+
     return (
         <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {slots.map((slot) => {
+                {sortedSlots.map((slot) => {
                     const config = getPlatformConfig(slot.type);
+                    const isMaintenance = slot.status === "MAINTENANCE";
                     return (
-                        <Card key={slot.id} className={`overflow-hidden border bg-zinc-900/50 ${config.borderColor} group hover:shadow-lg transition-all`}>
-                            <CardHeader className="pb-4">
+                        <Card key={slot.id} className={`relative overflow-hidden border bg-zinc-900/50 ${config.borderColor} group hover:shadow-lg transition-all ${isMaintenance ? 'grayscale opacity-60' : ''}`}>
+                            {slot.type === "PS5" && (
+                                <>
+                                    <div className="absolute inset-0 z-0">
+                                        <Image
+                                            src="/images/ps5-card-bg.jpg"
+                                            alt="Background"
+                                            fill
+                                            className="object-cover opacity-80"
+                                        />
+                                    </div>
+                                    <div className="absolute inset-0 z-0 bg-black/70" />
+                                </>
+                            )}
+                            {slot.type === "RACING_SIM" && (
+                                <>
+                                    <div className="absolute inset-0 z-0">
+                                        <Image
+                                            src="/images/racing-sim-card-bg.jpg"
+                                            alt="Background"
+                                            fill
+                                            className="object-cover opacity-80"
+                                        />
+                                    </div>
+                                    <div className="absolute inset-0 z-0 bg-black/70" />
+                                </>
+                            )}
+                            {slot.type === "VR" && (
+                                <>
+                                    <div className="absolute inset-0 z-0">
+                                        <Image
+                                            src="/images/vr-card-bg.jpg"
+                                            alt="Background"
+                                            fill
+                                            className="object-cover opacity-80"
+                                        />
+                                    </div>
+                                    <div className="absolute inset-0 z-0 bg-black/70" />
+                                </>
+                            )}
+                            <CardHeader className="pb-4 relative z-10">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <config.icon className={`h-5 w-5 ${config.iconColor}`} />
@@ -178,7 +240,6 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                                                 <Edit2 className="mr-2 h-4 w-4" />
                                                 Edit Slot
                                             </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
                                             <DropdownMenuItem
                                                 onClick={() => handleToggleStatus(slot.id, slot.status)}
                                                 disabled={togglingStatus === slot.id}
@@ -207,7 +268,7 @@ export default function SlotListClient({ slots }: { slots: Slot[] }) {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="pt-4 grid grid-cols-2 gap-4">
+                            <CardContent className="pt-4 grid grid-cols-2 gap-4 relative z-10">
                                 <div className="space-y-1">
                                     <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Price per session</p>
                                     <p className="text-lg font-bold text-white font-outfit">₹{slot.price}</p>
