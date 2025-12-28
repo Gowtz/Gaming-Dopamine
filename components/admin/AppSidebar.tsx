@@ -9,6 +9,7 @@ import {
     Settings,
     Users,
     Gamepad2, // Fallback logo
+    Crown
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -58,6 +59,11 @@ const data = {
             title: "Games",
             url: "/admin/games",
             icon: Gamepad2,
+        },
+        {
+            title: "Subscription",
+            url: "/admin/subscription",
+            icon: Crown,
         },
         {
             title: "Settings",

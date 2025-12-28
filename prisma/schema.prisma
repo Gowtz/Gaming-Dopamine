@@ -193,6 +193,7 @@ model Stats {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+
 model SystemSettings {
   id                 String   @id @default("global")
   siteName           String   @default("Gaming Dopamine")
@@ -200,4 +201,12 @@ model SystemSettings {
   maintenanceMode    Boolean  @default(false)
   emailNotifications Boolean  @default(true)
   updatedAt          DateTime @updatedAt
+}
+
+model SubscriptionPlan {
+  id          String   @id @default("default")
+  name        String   @default("Gold Membership")
+  totalHours  Float    @default(50.0)
+  price       Float    @default(0.0)
+  updatedAt   DateTime @updatedAt
 }

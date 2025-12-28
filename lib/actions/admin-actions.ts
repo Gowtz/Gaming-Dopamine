@@ -295,17 +295,38 @@ export async function toggleUserBlock(userId: string, isBlocked: boolean) {
     revalidatePath("/admin");
 }
 
+
 export async function toggleUserSubscription(userId: string, isSubscriber: boolean) {
     let expiresAt = null;
+    let tier = "Gold";
+    let totalHours = 0;
+
     if (isSubscriber) {
         const now = new Date();
         expiresAt = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate() - 1, 23, 59, 59);
+
+        // Fetch current subscription plan
+        const plan = await getSubscriptionPlan();
+        if (plan) {
+            tier = plan.name;
+            totalHours = plan.totalHours;
+        } else {
+            // Fallback
+            totalHours = 50;
+        }
     }
 
     await (prisma.membership as any).upsert({
         where: { userId },
-        update: { isSubscriber, expiresAt, totalHours: isSubscriber ? 50 : 0 },
-        create: { userId, isSubscriber, tier: "Gold", expiresAt, totalHours: isSubscriber ? 50 : 0 },
+        update: {
+            isSubscriber,
+            expiresAt,
+            // If turning OFF subscription, we assume hours go to 0? Or keep them? 
+            // Usually if not subscriber, hours are not usable. 
+            // But let's follow existing logic: if isSubscriber, set logic.
+            ...(isSubscriber ? { tier, totalHours } : { totalHours: 0 })
+        },
+        create: { userId, isSubscriber, tier, expiresAt, totalHours },
     });
     revalidatePath("/admin/players");
     revalidatePath("/admin");
@@ -355,5 +376,25 @@ export async function updateSettings(data: {
     });
     revalidatePath("/admin/settings");
     revalidatePath("/");
+    return { success: true };
+}
+
+export async function getSubscriptionPlan() {
+    return await (prisma as any).subscriptionPlan.upsert({
+        where: { id: "default" },
+        update: {},
+        create: { id: "default", name: "Gold Membership", totalHours: 50.0 },
+    });
+}
+
+export async function updateSubscriptionPlan(data: { name: string; totalHours: number }) {
+    await (prisma as any).subscriptionPlan.update({
+        where: { id: "default" },
+        data: {
+            name: data.name,
+            totalHours: Number(data.totalHours)
+        }
+    });
+    revalidatePath("/admin/subscription");
     return { success: true };
 }
