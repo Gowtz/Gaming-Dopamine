@@ -111,7 +111,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
         const start = timeToDate(latestBooking.startTime);
         if (!start) return null;
         const endTime = addMinutes(start, latestBooking.duration);
-        return format(endTime, "hh:mm a");
+        return format(endTime, "HH:mm");
     };
 
     const nextTimeStr = getNextAvailableTime();
@@ -195,7 +195,8 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
             let finalStartTime: string | undefined = undefined;
 
             if (startTimeType === "now") {
-                finalStartTime = format(new Date(), "HH:mm");
+                // Let backend handle "now" to ensure server time sync
+                finalStartTime = undefined;
             } else if (startTimeType === "after") {
                 finalStartTime = nextTimeStr || undefined;
             } else if (startTimeType === "custom") {

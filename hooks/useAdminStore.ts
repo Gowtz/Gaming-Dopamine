@@ -259,12 +259,26 @@ export const useAdminStore = create<AdminState>((set) => ({
 
         // Only update if counts changed to verify efficiency? 
         // For now, just set new state to ensure UI reflects time changes immediately
+
+        // REFACTOR: Stat Sync
+        // We need to sync the stats array with the new list counts for the dashboard cards to update
+        const updatedStats = state.stats.map(stat => {
+            if (stat.label === "Upcoming Bookings") {
+                return { ...stat, value: upcomingSlots.length };
+            }
+            if (stat.label === "Total Revenue") {
+                return { ...stat, value: state.totalRevenue };
+            }
+            return stat;
+        });
+
         return {
             activeSlots,
             finishedSlots,
             upcomingSlots,
             // Update summary stats if needed (active bookings count)
-            activeBookings: activeSlots.length
+            activeBookings: activeSlots.length,
+            stats: updatedStats
         };
     })
 }));

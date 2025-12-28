@@ -128,7 +128,7 @@ export async function getAdminDashboardData() {
         return {
             stats: [
                 { label: "Total Players", value: userCount, desc: "+12% from last month", iconName: "Users" },
-                { label: "Upcoming Bookings", value: activeBookingsCount, desc: "+5% from last week", iconName: "CalendarCheck" },
+                { label: "Upcoming Bookings", value: upcomingSlots.length, desc: "+5% from last week", iconName: "CalendarCheck" },
                 { label: "Total Revenue", value: `₹${totalRevenue.toFixed(2)}`, desc: "+18% from last month", iconName: "DollarSign" },
                 { label: "Slot Utilization", value: `${slotUtilization}%`, desc: "-2% from last hour", iconName: "Gamepad2" },
             ],
@@ -297,6 +297,15 @@ export async function createOfflineBooking(
     } else {
         // Fallback for when offset is not provided
         finalDate.setHours(h, m, 0, 0);
+    }
+
+    // Midnight Rollover Check:
+    // If the calculcated date (Today + h:m) is more than 12 hours in the PAST,
+    // assume the user implies "Tomorrow" (e.g., booking 00:30 when it's currently 23:45).
+    // This allows backlogging up to 12 hours ago, but catches the "next day" queueing case.
+    const diffHours = (serverNow.getTime() - finalDate.getTime()) / (1000 * 60 * 60);
+    if (diffHours > 12) {
+        finalDate.setDate(finalDate.getDate() + 1);
     }
 
     const booking = await (prisma.booking as any).create({
