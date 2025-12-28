@@ -23,7 +23,10 @@ export async function getAdminDashboardData() {
             slots, // Available slots
             allSlots,
             games,
-            historyBookings
+            historyBookings,
+            settings,
+            subscriptionPlan,
+            subscriptionHistoryData
         ] = await Promise.all([
             prisma.user.count({ where: { role: "USER" } }),
             prisma.booking.count({ where: { status: "Upcoming" } }),
@@ -61,6 +64,18 @@ export async function getAdminDashboardData() {
                 take: 50,
                 orderBy: { createdAt: 'desc' },
                 include: { user: true, slot: true }
+            }),
+            // New Pre-fetches
+            prisma.systemSettings.findFirst(),
+            (prisma as any).subscriptionPlan.findFirst(),
+            (prisma as any).subscriptionHistory.findMany({
+                orderBy: { timestamp: 'desc' },
+                take: 50,
+                include: {
+                    user: {
+                        select: { name: true, image: true, email: true }
+                    }
+                }
             })
         ]);
 
@@ -97,6 +112,15 @@ export async function getAdminDashboardData() {
 
         const recentBookings = historyBookings.slice(0, 7);
 
+        // Defaults if null
+        const settingsData = settings || {
+            siteName: "Gaming Dopamine",
+            supportEmail: "support@gamingdopamine.com",
+            maintenanceMode: false,
+            emailNotifications: true,
+        };
+        const planData = subscriptionPlan || { name: "Free Tier", totalHours: 50, price: 0 };
+
         return {
             stats: [
                 { label: "Total Players", value: userCount, desc: "+12% from last month", iconName: "Users" },
@@ -113,11 +137,14 @@ export async function getAdminDashboardData() {
             upcomingSlots,
             recentBookings,
             users,
-            slots: allSlots, // Passing ALL slots to store as 'slots'
+            slots: allSlots,
             games,
-            historyBookings
+            historyBookings,
+            // New Data
+            settings: settingsData,
+            subscriptionPlan: planData,
+            subscriptionHistory: subscriptionHistoryData
         };
-
     } catch (error) {
         console.error("Failed to fetch admin dashboard data:", error);
         throw new Error("Failed to load dashboard data");
@@ -321,16 +348,53 @@ export async function toggleUserSubscription(userId: string, isSubscriber: boole
         update: {
             isSubscriber,
             expiresAt,
-            // If turning OFF subscription, we assume hours go to 0? Or keep them? 
-            // Usually if not subscriber, hours are not usable. 
-            // But let's follow existing logic: if isSubscriber, set logic.
             ...(isSubscriber ? { tier, totalHours } : { totalHours: 0 })
         },
         create: { userId, isSubscriber, tier, expiresAt, totalHours },
     });
+
+    // Log History
+    await (prisma as any).subscriptionHistory.create({
+        data: {
+            userId,
+            action: isSubscriber ? "ACTIVATED" : "CANCELLED",
+            details: isSubscriber ? `${tier} - ${totalHours} Hours` : "Subscription cancelled by admin"
+        }
+    });
+
     revalidatePath("/admin/players");
     revalidatePath("/admin");
     revalidatePath("/profile");
+}
+
+export async function getSubscriptionData() {
+    const [activeSubscribers, history] = await Promise.all([
+        prisma.user.findMany({
+            where: {
+                membership: {
+                    isSubscriber: true
+                }
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                membership: true
+            }
+        }),
+        (prisma as any).subscriptionHistory.findMany({
+            orderBy: { timestamp: 'desc' },
+            take: 50,
+            include: {
+                user: {
+                    select: { name: true, image: true, email: true }
+                }
+            }
+        })
+    ]);
+
+    return { activeSubscribers, history };
 }
 
 export async function deleteUser(userId: string) {

@@ -6,153 +6,271 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2, Calendar, Clock, Crown, Edit2 } from 'lucide-react';
-import { getSubscriptionPlan, updateSubscriptionPlan } from "@/lib/actions/admin-actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { getSubscriptionPlan, getSubscriptionData } from "@/lib/actions/admin-actions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAdminStore } from "@/hooks/useAdminStore";
 
 export default function SubscriptionPage() {
-    const [plan, setPlan] = useState<any>(null);
+    // Local state for fallback or explicit local data
+    const [localPlan, setLocalPlan] = useState<any>(null);
+    const [localSubscribers, setLocalSubscribers] = useState<any[]>([]);
+    const [localHistory, setLocalHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [editOpen, setEditOpen] = useState(false);
-    const [formLoading, setFormLoading] = useState(false);
-    const [formData, setFormData] = useState<{ name: string; totalHours: number | string }>({ name: "", totalHours: 50 });
+
+    const {
+        activeSubscriptionTab,
+        setSubscriptionTab,
+        users,
+        subscriptionPlan: storePlan,
+        subscriptionHistory: storeHistory,
+        setData // Generic setter
+    } = useAdminStore();
+
     const router = useRouter();
 
     useEffect(() => {
-        loadPlan();
-    }, []);
+        const initData = async () => {
+            // Check Store Cache
+            const hasUsers = users.length > 0;
+            const hasHistory = storeHistory.length > 0;
+            const hasPlan = !!storePlan;
 
-    const loadPlan = async () => {
-        try {
-            const data = await getSubscriptionPlan();
-            setPlan(data);
-            setFormData({ name: data.name, totalHours: data.totalHours });
-        } catch (error) {
-            console.error("Failed to load plan", error);
-            toast.error("Failed to load subscription plan");
-        } finally {
-            setLoading(false);
-        }
-    };
+            if (hasUsers && hasHistory && hasPlan) {
+                // Cache Hit
+                setLocalPlan(storePlan);
+                setLocalSubscribers(users.filter(u => u.membership?.isSubscriber));
+                setLocalHistory(storeHistory);
+                setLoading(false);
+                return;
+            }
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormLoading(true);
-        try {
-            await updateSubscriptionPlan({
-                name: formData.name,
-                totalHours: Number(formData.totalHours) || 0
-            });
-            toast.success("Subscription plan updated successfully");
-            setEditOpen(false);
-            loadPlan();
-            router.refresh();
-        } catch (error) {
-            console.error("Failed to update plan", error);
-            toast.error("Failed to update plan");
-        } finally {
-            setFormLoading(false);
-        }
-    };
+            // Cache Miss - Fetch Data
+            try {
+                const [planData, subData] = await Promise.all([
+                    getSubscriptionPlan(),
+                    getSubscriptionData()
+                ]);
 
-    if (loading) {
-        return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
+                setLocalPlan(planData);
+                setLocalSubscribers(subData.activeSubscribers);
+                setLocalHistory(subData.history);
+
+                // Update Store Cache
+                // Note: We do NOT update 'users' here to avoid partial state (users requires all users).
+                // We only update specific slices.
+                setData({
+                    subscriptionPlan: planData,
+                    subscriptionHistory: subData.history
+                });
+            } catch (error) {
+                console.error("Failed to load data", error);
+                toast.error("Failed to load subscription data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initData();
+    }, [users, storeHistory, storePlan, setData]);
+
+    // Derived state for rendering: Use Store if available, else Local
+    // Actually the effect syncs store to local, so we can just use local?
+    // Or prefer store to be reactive?
+    // Let's use reactive store if available for 'Subscribers' (since users might update elsewhere), 
+    // but fall back to local if users is empty (direct page load).
+
+    // Efficient Strategy:
+    // If users.length > 0, use users.filter
+    // Else use localSubscribers
+    const displaySubscribers = users.length > 0
+        ? users.filter(u => u.membership?.isSubscriber)
+        : localSubscribers;
+
+    // For History/Plan, we blindly updated store, so store *should* be populated after fetch,
+    // except if we use the local state which updates faster/simpler? 
+    // Let's use the local state variables which are synchronized in the effect.
+    // Wait, the effect runs ONCE. If store updates later (background), local details might be stale?
+    // No, effect has deps [users, storeHistory...]. It will re-run if store updates.
+    // So sticking to local state sync is fine.
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white font-outfit">Subscription Management</h1>
-                    <p className="text-zinc-400">Manage the default plan settings for subscribers.</p>
+                    <p className="text-zinc-400">View active subscribers and track subscription history.</p>
                 </div>
             </div>
 
-            <Card className="max-w-md border-zinc-800 bg-zinc-900/50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-                        <Crown className="w-5 h-5 text-yellow-500" />
-                        Current Plan
-                    </CardTitle>
-                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 gap-2">
-                                <Edit2 className="w-4 h-4" /> Edit Plan
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="admin-theme sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Edit Subscription Plan</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleSave} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="planName">Plan Name</Label>
-                                    <Input
-                                        id="planName"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="e.g. Gold Membership"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="totalHours">Total Playable Hours</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="totalHours"
-                                            type="number"
-                                            min="0"
-                                            value={formData.totalHours}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setFormData({ ...formData, totalHours: val === "" ? "" : parseFloat(val) })
-                                            }}
-                                            className="pl-9"
-                                            required
-                                        />
-                                        <Clock className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
+            <Tabs value={activeSubscriptionTab} onValueChange={setSubscriptionTab} className="space-y-4">
+                <TabsList className="bg-zinc-900 border border-zinc-800">
+                    <TabsTrigger value="subscribers">Active Subscribers ({displaySubscribers.length})</TabsTrigger>
+                    <TabsTrigger value="history">History</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="subscribers">
+                    {loading ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-10 w-[300px] bg-zinc-800" />
+                            <Card className="border-zinc-800 bg-zinc-900/50">
+                                <CardHeader>
+                                    <Skeleton className="h-6 w-[200px] mb-2 bg-zinc-800" />
+                                    <Skeleton className="h-4 w-[300px] bg-zinc-800" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-12 w-full bg-zinc-800" />
+                                        <Skeleton className="h-12 w-full bg-zinc-800" />
+                                        <Skeleton className="h-12 w-full bg-zinc-800" />
                                     </div>
-                                    <p className="text-xs text-muted-foreground">Monthly hours allocated to subscribers.</p>
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-                                    <Button type="submit" disabled={formLoading}>
-                                        {formLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                                        Save Changes
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-6 pt-4">
-                        <div className="space-y-1">
-                            <span className="text-xs uppercase text-zinc-500 font-bold tracking-wider">Plan Name</span>
-                            <div className="text-2xl font-bold text-white font-outfit">{plan?.name}</div>
+                                </CardContent>
+                            </Card>
                         </div>
+                    ) : (
+                        <Card className="border-zinc-800 bg-zinc-900/50">
+                            <CardHeader>
+                                <CardTitle>Active Subscribers</CardTitle>
+                                <CardDescription>Users currently subscribed to the {localPlan?.name}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {displaySubscribers.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">No active subscribers found.</div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="hover:bg-zinc-800/50 border-zinc-800">
+                                                <TableHead>User</TableHead>
+                                                <TableHead>Tier</TableHead>
+                                                <TableHead>Hours Used</TableHead>
+                                                <TableHead>Expires At</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {displaySubscribers.map((user) => (
+                                                <TableRow key={user.id} className="hover:bg-zinc-800/50 border-zinc-800">
+                                                    <TableCell className="font-medium">
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="h-8 w-8">
+                                                                <AvatarImage src={user.image} />
+                                                                <AvatarFallback>{user.name?.[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex flex-col">
+                                                                <span>{user.name}</span>
+                                                                <span className="text-xs text-muted-foreground">{user.email}</span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                                                            {user.membership?.tier}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-white">{user.membership?.utilizedHours}</span>
+                                                            <span className="text-muted-foreground">/ {user.membership?.totalHours} hrs</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {user.membership?.expiresAt ? format(new Date(user.membership.expiresAt), "MMM d, yyyy") : "N/A"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
 
-                        <div className="space-y-1">
-                            <span className="text-xs uppercase text-zinc-500 font-bold tracking-wider">Allocation</span>
-                            <div className="flex items-end gap-2">
-                                <div className="text-4xl font-bold text-primary font-outfit">{plan?.totalHours}</div>
-                                <div className="text-lg text-zinc-400 mb-1.5">hours / month</div>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-zinc-800">
-                            <div className="flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900 p-2 rounded-md">
-                                <Calendar className="w-4 h-4 text-zinc-500" />
-                                <span>Updates apply to new subscriptions</span>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                <TabsContent value="history">
+                    {loading ? (
+                        <Card className="border-zinc-800 bg-zinc-900/50">
+                            <CardHeader>
+                                <Skeleton className="h-6 w-[200px] mb-2 bg-zinc-800" />
+                                <Skeleton className="h-4 w-[300px] bg-zinc-800" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <Skeleton className="h-12 w-full bg-zinc-800" />
+                                    <Skeleton className="h-12 w-full bg-zinc-800" />
+                                    <Skeleton className="h-12 w-full bg-zinc-800" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="border-zinc-800 bg-zinc-900/50">
+                            <CardHeader>
+                                <CardTitle>Subscription History</CardTitle>
+                                <CardDescription>Recent subscription events and changes.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {(localHistory.length > 0 ? localHistory : storeHistory).length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">No history records found.</div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="hover:bg-zinc-800/50 border-zinc-800">
+                                                <TableHead>Time</TableHead>
+                                                <TableHead>User</TableHead>
+                                                <TableHead>Action</TableHead>
+                                                <TableHead>Details</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {(localHistory.length > 0 ? localHistory : storeHistory).map((record) => (
+                                                <TableRow key={record.id} className="hover:bg-zinc-800/50 border-zinc-800">
+                                                    <TableCell className="text-muted-foreground">
+                                                        {format(new Date(record.timestamp), "MMM d, h:mm a")}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar className="h-6 w-6">
+                                                                <AvatarImage src={record.user?.image} />
+                                                                <AvatarFallback>{record.user?.name?.[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="text-sm">{record.user?.name}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline"
+                                                            className={
+                                                                record.action === "ACTIVATED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                                    record.action === "CANCELLED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                                                                        "bg-zinc-500/10 text-zinc-500"
+                                                            }
+                                                        >
+                                                            {record.action}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-zinc-400">
+                                                        {record.details}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

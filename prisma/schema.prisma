@@ -49,6 +49,7 @@ model User {
   bookings      Booking[]
   wallet        Wallet?
   membership    Membership?
+  subscriptionHistory SubscriptionHistory[]
   stats         Stats?
   isBlocked     Boolean   @default(false)
 }
@@ -209,4 +210,14 @@ model SubscriptionPlan {
   totalHours  Float    @default(50.0)
   price       Float    @default(0.0)
   updatedAt   DateTime @updatedAt
+}
+
+model SubscriptionHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // ACTIVATED, CANCELLED, EXPIRED, RENEWED
+  details   String?
+  timestamp DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

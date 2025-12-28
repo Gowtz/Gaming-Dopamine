@@ -35,15 +35,27 @@ interface AdminState {
     upcomingSlots: any[];
     recentBookings: any[];
     users: User[];
-    slots: Slot[]; // Now containing ALL slots
-    games: Game[]; // New
-    historyBookings: any[]; // New
+    slots: Slot[];
+    games: Game[];
+    historyBookings: any[];
+
+    // New Data for Caching
+    settings: any | null;
+    subscriptionPlan: any | null;
+    subscriptionHistory: any[];
 
     isLoading: boolean;
+
+    // UI State
+    activeSettingsTab: string;
+    activeSubscriptionTab: string;
+    setSettingsTab: (tab: string) => void;
+    setSubscriptionTab: (tab: string) => void;
 
     // Actions
     setData: (data: Partial<AdminState>) => void;
     setLoading: (loading: boolean) => void;
+
     updateBookingStatus: (id: string, status: string, totalPrice?: number, paymentMethod?: string) => void;
     updateBookingFields: (id: string, fields: Partial<any>) => void;
     deleteBooking: (id: string) => void;
@@ -54,6 +66,10 @@ interface AdminState {
     deleteGame: (id: string) => void;
     addGame: (game: Game) => void;
     updateUser: (id: string, data: Partial<User>) => void;
+
+    // New Actions
+    updateSettingsCache: (settings: any) => void;
+    updateSubscriptionPlanCache: (plan: any) => void;
 }
 
 export const useAdminStore = create<AdminState>((set) => ({
@@ -72,7 +88,17 @@ export const useAdminStore = create<AdminState>((set) => ({
     games: [],
     historyBookings: [],
 
+    settings: null,
+    subscriptionPlan: null,
+    subscriptionHistory: [],
+
     isLoading: true,
+
+    // UI State Init
+    activeSettingsTab: "general",
+    activeSubscriptionTab: "subscribers",
+    setSettingsTab: (tab) => set({ activeSettingsTab: tab }),
+    setSubscriptionTab: (tab) => set({ activeSubscriptionTab: tab }),
 
     setData: (data) => set((state) => ({ ...state, ...data, isLoading: false })),
     setLoading: (loading) => set({ isLoading: loading }),
@@ -110,7 +136,6 @@ export const useAdminStore = create<AdminState>((set) => ({
     addBooking: (booking) => set((state) => ({
         upcomingSlots: [...state.upcomingSlots, booking],
         historyBookings: [booking, ...state.historyBookings],
-        // Maybe update recent?
     })),
 
     addSlot: (slot) => set((state) => ({
@@ -136,4 +161,7 @@ export const useAdminStore = create<AdminState>((set) => ({
     addSlots: (newSlots) => set((state) => ({
         slots: [...state.slots, ...newSlots]
     })),
+
+    updateSettingsCache: (settings) => set({ settings }),
+    updateSubscriptionPlanCache: (plan) => set({ subscriptionPlan: plan })
 }));
