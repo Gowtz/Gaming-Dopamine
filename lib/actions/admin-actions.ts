@@ -168,7 +168,8 @@ export async function createOfflineBooking(
     duration?: number,
     startTime?: string,
     source: BookingSource = BookingSource.OFFLINE,
-    force: boolean = false
+    force: boolean = false,
+    timeZoneOffset?: number
 ) {
     const slot = await prisma.slot.findUnique({
         where: { id: slotId },
@@ -235,7 +236,19 @@ export async function createOfflineBooking(
 
     const finalDate = new Date();
     const [h, m] = [Math.floor(bookingStartVal / 60), bookingStartVal % 60];
-    finalDate.setHours(h, m, 0, 0);
+
+    if (timeZoneOffset !== undefined) {
+        // timeZoneOffset is in minutes (UTC - Local). e.g., -330 for IST.
+        // We want to set UTC time such that Local Time matches h:m.
+        // UTC = Local + Offset.
+        // Example: Local 12:00, Offset -330 (-5.5h) -> UTC = 06:30.
+        // 12*60 + (-330) = 720 - 330 = 390 = 6h 30m. Correct.
+        const totalMinutesUTC = (h * 60 + m) + timeZoneOffset;
+        finalDate.setUTCHours(0, totalMinutesUTC, 0, 0);
+    } else {
+        // Fallback for when offset is not provided
+        finalDate.setHours(h, m, 0, 0);
+    }
 
     const booking = await (prisma.booking as any).create({
         data: {

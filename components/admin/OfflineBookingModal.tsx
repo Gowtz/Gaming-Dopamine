@@ -208,7 +208,8 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                 finalDuration,
                 finalStartTime,
                 BookingSource.OFFLINE,
-                overrideTiming
+                overrideTiming,
+                new Date().getTimezoneOffset()
             );
 
             if (newBooking) {
