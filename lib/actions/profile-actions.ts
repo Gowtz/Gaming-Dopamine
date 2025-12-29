@@ -57,6 +57,26 @@ export async function getUserProfile(email: string) {
         availableHours = (membership.totalHours || 0) - (membership.utilizedHours || 0);
     }
 
+    // Check for Active/Ongoing Booking
+    const upcomingBookings = await prisma.booking.findMany({
+        where: {
+            userId: user.id,
+            status: "Upcoming"
+        },
+        include: { slot: true },
+        orderBy: { date: 'asc' }
+    });
+
+    const now = new Date();
+    const ongoingBooking = upcomingBookings.find(booking => {
+        const startTime = new Date(booking.date);
+        const endTime = new Date(booking.date);
+        endTime.setMinutes(endTime.getMinutes() + booking.duration);
+        return startTime <= now && endTime > now;
+    });
+
+
+
     return {
         user,
         stats,
@@ -65,5 +85,6 @@ export async function getUserProfile(email: string) {
         preferences,
         realTotalPlaytimeMinutes,
         availableHours,
+        ongoingBooking, // New field
     };
 }
