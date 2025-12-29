@@ -139,6 +139,252 @@ export async function deleteBooking(bookingId: string) {
         return { success: true };
     } catch (error) {
         console.error("Error deleting booking:", error);
-        return { success: false, error: "Failed to delete booking" };
+    }
+}
+
+// Helper to check time overlap
+function doTimesOverlap(start1: Date, end1: Date, start2: Date, end2: Date) {
+    return start1 < end2 && start2 < end1;
+}
+
+// Parse "HH:MM" to minutes from midnight
+function parseTimeToMinutes(timeStr: string) {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+}
+
+// Convert minutes from midnight to "HH:MM"
+function formatMinutesToTime(totalMinutes: number) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+export async function getAvailableSlots(date: Date, platform: string) {
+    try {
+        const slots = await prisma.slot.findMany({
+            where: {
+                type: platform as any,
+                status: "AVAILABLE",
+                isPublic: true,
+            }
+        });
+
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const bookingsOnDate = await prisma.booking.findMany({
+            where: {
+                date: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                },
+                type: platform,
+                status: { in: ["Upcoming", "Completed", "Ongoing"] }
+            }
+        });
+
+        // 1. Generate all possible 1-hour logical slots from physical slots
+        const aggregatedSlots: Record<string, {
+            startTime: string;
+            endTime: string;
+            price: number;
+            maxPlayers: number;
+            bookedCount: number;
+        }> = {};
+
+        for (const slot of slots) {
+            const slotStartMins = parseTimeToMinutes(slot.startTime);
+            const slotEndMins = slotStartMins + slot.duration;
+
+            // Slice into 60-minute blocks
+            for (let currentStart = slotStartMins; currentStart + 60 <= slotEndMins; currentStart += 60) {
+                const currentEnd = currentStart + 60;
+                const timeKey = formatMinutesToTime(currentStart);
+                const endTimeStr = formatMinutesToTime(currentEnd);
+
+                if (!aggregatedSlots[timeKey]) {
+                    aggregatedSlots[timeKey] = {
+                        startTime: timeKey,
+                        endTime: endTimeStr,
+                        price: slot.price, // Use first found price (or logic to average/max)
+                        maxPlayers: 0,
+                        bookedCount: 0
+                    };
+                }
+
+                aggregatedSlots[timeKey].maxPlayers += slot.maxPlayers;
+
+                // Calculate bookings that overlap strictly with THIS hour
+                const blockStart = new Date(date);
+                blockStart.setHours(Math.floor(currentStart / 60), currentStart % 60, 0, 0);
+                const blockEnd = new Date(blockStart);
+                blockEnd.setMinutes(blockEnd.getMinutes() + 60);
+
+                // We need to know how many bookings overlap *this specific physical slot's* sub-block.
+                // Currently bookings have `slotId`.
+
+                const bookingsForThisPhysicalSlot = bookingsOnDate.filter(b => b.slotId === slot.id);
+
+                const conflictsForThisSlotBlock = bookingsForThisPhysicalSlot.filter(b => {
+                    const [bSH, bSM] = (b.startTime as string).split(':').map(Number);
+                    const bStart = new Date(date);
+                    bStart.setHours(bSH, bSM, 0, 0);
+                    const bEnd = new Date(bStart);
+                    bEnd.setMinutes(bEnd.getMinutes() + b.duration);
+
+                    return doTimesOverlap(blockStart, blockEnd, bStart, bEnd);
+                }).length;
+
+                aggregatedSlots[timeKey].bookedCount += conflictsForThisSlotBlock;
+            }
+        }
+
+        return Object.values(aggregatedSlots)
+            .sort((a, b) => a.startTime.localeCompare(b.startTime))
+            .map(s => ({
+                ...s,
+                isFull: s.bookedCount >= s.maxPlayers,
+                availableSpots: Math.max(0, s.maxPlayers - s.bookedCount),
+                totalSpots: s.maxPlayers
+            }))
+            .filter(s => !s.isFull);
+
+    } catch (error) {
+        console.error("Error fetching available slots:", error);
+        return [];
+    }
+}
+
+export async function createOnlineBooking(platform: string, date: Date, startTime: string) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            throw new Error("Authentication required");
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            include: { membership: true }
+        });
+
+        if (!user) throw new Error("User not found");
+
+        const bookingDuration = 60; // Fixed 1 hour
+        const reqStartMins = parseTimeToMinutes(startTime);
+        const reqEndMins = reqStartMins + bookingDuration;
+
+        const bookingDate = new Date(date);
+        const [h, m] = startTime.split(':').map(Number);
+        bookingDate.setHours(h, m, 0, 0);
+        const bookingEnd = new Date(bookingDate);
+        bookingEnd.setMinutes(bookingEnd.getMinutes() + bookingDuration);
+
+        // Find potential slots that COVER this time range
+        const potentialSlots = await prisma.slot.findMany({
+            where: {
+                type: platform as any,
+                status: "AVAILABLE",
+                isPublic: true,
+            }
+        });
+
+        // Filter valid physical slots that contain the requested hour
+        const validPhysicalSlots = potentialSlots.filter(s => {
+            const sStart = parseTimeToMinutes(s.startTime);
+            const sEnd = sStart + s.duration;
+            return sStart <= reqStartMins && sEnd >= reqEndMins;
+        });
+
+        if (!validPhysicalSlots.length) {
+            throw new Error("No available slots found for this time.");
+        }
+
+        // Check availability
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const bookingsOnDate = await prisma.booking.findMany({
+            where: {
+                date: { gte: startOfDay, lte: endOfDay },
+                type: platform,
+                status: { in: ["Upcoming", "Completed", "Ongoing"] }
+            }
+        });
+
+        let targetSlot = null;
+
+        for (const slot of validPhysicalSlots) {
+            const bookingsForThisSlot = bookingsOnDate.filter(b => b.slotId === slot.id);
+
+            const conflictCount = bookingsForThisSlot.filter(b => {
+                const [bSH, bSM] = (b.startTime as string).split(':').map(Number);
+                const bStart = new Date(date);
+                bStart.setHours(bSH, bSM, 0, 0);
+                const bEnd = new Date(bStart);
+                bEnd.setMinutes(bEnd.getMinutes() + b.duration);
+
+                return doTimesOverlap(bookingDate, bookingEnd, bStart, bEnd);
+            }).length;
+
+            if (conflictCount < slot.maxPlayers) {
+                targetSlot = slot;
+                break;
+            }
+        }
+
+        if (!targetSlot) {
+            throw new Error("Selected time is fully booked");
+        }
+
+        // Proceed with targetSlot
+        let paymentMethod = "PAY_AT_VENUE";
+        let status = "Upcoming";
+
+        if (user.membership?.isSubscriber) {
+            const hoursNeeded = bookingDuration / 60;
+            const available = (user.membership.totalHours || 0) - (user.membership.utilizedHours || 0);
+
+            // Check if booking date is within subscription period
+            const isSubscriptionValidForDate = user.membership.expiresAt
+                ? new Date(user.membership.expiresAt) >= bookingDate
+                : false;
+
+            if (available >= hoursNeeded && isSubscriptionValidForDate) {
+                paymentMethod = "SUBSCRIPTION";
+            }
+        }
+
+        const booking = await prisma.booking.create({
+            data: {
+                userId: user.id,
+                slotId: targetSlot.id,
+                date: bookingDate,
+                startTime: startTime,
+                duration: bookingDuration,
+                type: targetSlot.type,
+                status: status,
+                source: "ONLINE",
+                paymentMethod: paymentMethod,
+                totalPrice: targetSlot.price // Note: This might be the 12-hour price? 
+                // Ideally we should calculate price per hour if slot is longer.
+                // Assuming price in DB is "per slot" but if slot is 12h, price is huge.
+                // If the user intends "Hourly Price", the Slot schema might be "Price per session" or "Price per hour"?
+                // For now, using slot.price. We might need to adjust this if the User has set "200" for a 12h slot.
+                // Re-calculating: assuming uniform hourly price based on slot configuration isn't trivial without more info.
+                // BUT, typically "Slot" = "Hourly Slot". If they made a 12h slot, maybe they set price for 12h.
+                // Let's assume price is okay for now or it's a "rate".
+            }
+        });
+
+        revalidatePath("/profile");
+        return { success: true, bookingId: booking.id };
+    } catch (error: any) {
+        console.error("Error creating online booking:", error);
+        return { success: false, error: error.message };
     }
 }

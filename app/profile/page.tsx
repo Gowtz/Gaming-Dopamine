@@ -11,9 +11,13 @@ import {
     Zap,
     History,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { BookingModal } from "@/components/profile/BookingModal";
+
+// ...
+
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -93,11 +97,9 @@ export default async function ProfilePage() {
 
                         {/* Action Button */}
                         <div className="w-full md:w-auto">
-                            <Link href="/booking" className="block w-full">
-                                <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 md:h-14 rounded-xl font-bold text-base md:text-lg transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20">
-                                    Book Now
-                                </Button>
-                            </Link>
+                            <div className="w-full md:w-auto">
+                                <BookingModal />
+                            </div>
                         </div>
                     </div>
                 </div>
