@@ -93,7 +93,7 @@ export async function getAdminDashboardData() {
             return acc + Math.ceil((booking.duration / 60) * pricePerHour);
         }, 0);
 
-        const slotUtilization = 68; // Mock/Calculation
+
 
         // 3. Process Bookings Lists
         const activeSlots = allUpcomingBookings.filter(booking => {
@@ -130,12 +130,11 @@ export async function getAdminDashboardData() {
                 { label: "Total Players", value: userCount, desc: "+12% from last month", iconName: "Users" },
                 { label: "Upcoming Bookings", value: upcomingSlots.length, desc: "+5% from last week", iconName: "CalendarCheck" },
                 { label: "Total Revenue", value: `₹${totalRevenue.toFixed(2)}`, desc: "+18% from last month", iconName: "DollarSign" },
-                { label: "Slot Utilization", value: `${slotUtilization}%`, desc: "-2% from last hour", iconName: "Gamepad2" },
             ],
             totalPlayers: userCount,
             activeBookings: activeBookingsCount,
             totalRevenue: `₹${totalRevenue.toFixed(2)}`,
-            slotUtilization,
+
             activeSlots,
             finishedSlots,
             upcomingSlots,

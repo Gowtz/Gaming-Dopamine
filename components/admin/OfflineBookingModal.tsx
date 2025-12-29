@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -187,6 +187,35 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
 
     // ... (logic)
 
+    const resetForm = () => {
+        setSearch("");
+        setSelectedUser(null);
+        setSelectedSlotId("");
+        setStartTimeType("now");
+        setCustomStartTime("");
+        setDuration(60);
+        setCustomDuration("");
+        setShowConfirm(false);
+        setOverrideTiming(false);
+        setConflictError(null);
+    };
+
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleOpenChange = (isOpen: boolean) => {
+        setOpen(isOpen);
+        if (isOpen) {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        } else {
+            timeoutRef.current = setTimeout(() => {
+                resetForm();
+            }, 300); // Wait for close animation
+        }
+    };
+
     const handleCreateBooking = async () => {
         if (!selectedSlotId || (currentConflict && !overrideTiming)) return;
         setLoading(true);
@@ -217,8 +246,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
                 addBooking(newBooking);
             }
 
-            setOpen(false);
-            setShowConfirm(false);
+            handleOpenChange(false);
             // router.refresh();
         } catch (error) {
             console.error(error);
@@ -228,7 +256,7 @@ export default function OfflineBookingModal({ users, slots, existingBookings = [
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger || (
                     <Button variant="outline" className="gap-2">

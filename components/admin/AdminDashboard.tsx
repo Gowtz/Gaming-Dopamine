@@ -113,7 +113,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats Grid - Now 5 columns to include Quick Actions */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat) => {
                     const Icon = iconMap[stat.iconName as string] || Users;
                     const isPositive = stat.desc.startsWith('+');
