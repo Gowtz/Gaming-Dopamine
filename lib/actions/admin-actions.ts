@@ -79,6 +79,46 @@ export async function getAdminDashboardData() {
             })
         ]);
 
+        // ... existing Promise.all ...
+
+        // 1.5. Auto-Process Expired Subscriber Sessions (Auto-Deduct Hours)
+        const expiredSubscriberBookings = allUpcomingBookings.filter(booking => {
+            const endTime = new Date(booking.date);
+            endTime.setMinutes(endTime.getMinutes() + booking.duration);
+            const isExpired = endTime <= now;
+            const isSubscriber = booking.user?.membership?.isSubscriber;
+            return isExpired && isSubscriber;
+        });
+
+        if (expiredSubscriberBookings.length > 0) {
+            await Promise.all(expiredSubscriberBookings.map(async (booking) => {
+                try {
+                    // Update Booking Status
+                    await prisma.booking.update({
+                        where: { id: booking.id },
+                        data: {
+                            status: "Completed",
+                            paymentMethod: "SUBSCRIPTION",
+                            totalPrice: 0
+                        }
+                    });
+
+                    // Deduct Hours
+                    const hoursToDeduct = booking.duration / 60;
+                    if (booking.user?.id) {
+                        await (prisma.membership as any).update({
+                            where: { userId: booking.user.id },
+                            data: {
+                                utilizedHours: { increment: hoursToDeduct }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error(`Failed to auto-process booking ${booking.id}`, e);
+                }
+            }));
+        }
+
         // 2. Calculate Revenue
         const totalRevenue = finishedSessions.reduce((acc, booking) => {
             // Exclude subscription payments from revenue
@@ -96,18 +136,51 @@ export async function getAdminDashboardData() {
 
 
         // 3. Process Bookings Lists
+        // We need to re-classify bookings because some "Upcoming" might have just been auto-completed above.
+        // Actually, we can just filter the original list based on time logic, 
+        // AND for the UI list "Finished", we include those we just auto-processed.
+
+        // Active: Starts in past, Ends in future
         const activeSlots = allUpcomingBookings.filter(booking => {
+            // Exclude if we just completed it? No, if it's expired, it won't pass this time check anyway.
             const startTime = new Date(booking.date);
             const endTime = new Date(booking.date);
             endTime.setMinutes(endTime.getMinutes() + booking.duration);
             return startTime <= now && endTime > now;
         });
 
-        const finishedSlots = allUpcomingBookings.filter(booking => {
+        // Finished: Upcoming (DB) but Expired (Time) OR Recently Completed (DB)
+        // For the "Finished" tab list in UI, we want:
+        // 1. Pending Payments (Expired Guests) -> These are in 'allUpcomingBookings' but expired.
+        // 2. Just Finished Subscribers -> These were in 'allUpcomingBookings' (now DB Completed).
+        // 3. Manually Finished Today -> In 'finishedSessions'.
+
+        const expiredUpcoming = allUpcomingBookings.filter(booking => {
             const endTime = new Date(booking.date);
             endTime.setMinutes(endTime.getMinutes() + booking.duration);
             return endTime <= now;
         });
+
+        // Combine for UI
+        // Since we auto-completed subscribers, they are technically "Completed" in DB now 
+        // but 'allUpcomingBookings' still holds the old object (status="Upcoming").
+        // We can just use 'expiredUpcoming' for the list, but we should update their status in the object
+        // so the UI knows they are effectively "Completed" (for the "Done" button).
+
+        const processedFinishedSlots = expiredUpcoming.map(b => {
+            const isSub = b.user?.membership?.isSubscriber;
+            if (isSub) {
+                return { ...b, status: "Completed", paymentMethod: "SUBSCRIPTION", totalPrice: 0 };
+            }
+            return b;
+        });
+
+        // If we want to verify against 'finishedSessions' (DB Completed), we can, 
+        // but 'finishedSessions' fetches ALL logic (potentially heavy).
+        // Let's stick to showing the "Just Finished" ones from the Upcoming fetch, 
+        // as that's what the UI was doing before.
+
+        const finishedSlots = processedFinishedSlots;
 
         const upcomingSlots = allUpcomingBookings.filter(booking => {
             const startTime = new Date(booking.date);
@@ -161,6 +234,15 @@ export async function updateBookingStatus(
     paymentMethod?: string
 ) {
     try {
+        // Prevent Double Deduction: Fetch first to check current status
+        const currentBooking = await prisma.booking.findUnique({
+            where: { id },
+            include: { user: { include: { membership: true } } }
+        });
+
+        if (!currentBooking) return;
+
+        // Perform Status Update
         await prisma.booking.update({
             where: { id },
             data: { status }
@@ -168,6 +250,21 @@ export async function updateBookingStatus(
 
         if (totalPrice !== undefined && paymentMethod !== undefined) {
             await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "totalPrice" = $1, "paymentMethod" = $2 WHERE id = $3`, totalPrice, paymentMethod, id);
+
+            // HANDLE SUBSCRIPTION DEDUCTION
+            // Only deduct if transitioning TO Completed FROM something else (and is Subscription)
+            if (paymentMethod === "SUBSCRIPTION" && status === "Completed" && currentBooking.status !== "Completed") {
+                if (currentBooking.user && currentBooking.user.membership && currentBooking.user.membership.isSubscriber) {
+                    const hoursToDeduct = currentBooking.duration / 60;
+                    await (prisma.membership as any).update({
+                        where: { userId: currentBooking.userId },
+                        data: {
+                            utilizedHours: { increment: hoursToDeduct }
+                        }
+                    });
+                }
+            }
+
         } else if (totalPrice !== undefined) {
             await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "totalPrice" = $1 WHERE id = $2`, totalPrice, id);
         } else if (paymentMethod !== undefined) {

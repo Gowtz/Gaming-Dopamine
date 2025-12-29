@@ -141,11 +141,11 @@ export function FinishedSessionsList({ slots }: FinishedSessionsListProps) {
                             {isSubscriber ? (
                                 <Button
                                     size="sm"
-                                    variant="outline"
+                                    className="bg-primary text-primary-foreground hover:bg-primary/90"
                                     onClick={() => handleComplete(slot.id, 0, "SUBSCRIPTION")}
                                     disabled={confirming === slot.id}
                                 >
-                                    {confirming === slot.id ? "..." : "Dismiss"}
+                                    {confirming === slot.id ? "Processing..." : "Done"}
                                 </Button>
                             ) : (
                                 <Button
