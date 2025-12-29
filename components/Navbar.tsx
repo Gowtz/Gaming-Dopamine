@@ -45,12 +45,13 @@ const Navbar = () => {
         >
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 group">
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center group-hover:bg-neon-blue transition-colors shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                        <Gamepad2 className="text-white w-6 h-6" />
-                    </div>
-                    <span className="text-xl font-bold tracking-tighter font-outfit">
-                        DOPAMINE<span className="text-primary group-hover:text-neon-blue transition-colors">GAMING</span>
-                    </span>
+                    <Image
+                        src="/images/Logo.png"
+                        alt="Logo"
+                        width={60}
+                        height={60}
+                        className="w-16 h-16 object-contain"
+                    />
                 </Link>
 
                 {/* Desktop Nav */}

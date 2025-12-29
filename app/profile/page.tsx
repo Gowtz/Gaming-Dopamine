@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { getUserProfile } from "@/lib/actions/profile-actions";
 import {
     Clock,
     Calendar,
@@ -20,34 +20,32 @@ import { Button } from "@/components/ui/button";
 export default async function ProfilePage() {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
+    if (!session?.user?.email) {
         redirect("/auth/signin");
     }
 
-    // @ts-ignore
-    const user = await prisma.user.findUnique({
-        where: { email: session.user.email || "" },
-        include: {
-            stats: true,
-            wallet: true,
-            membership: true,
-            preferences: true,
-            bookings: {
-                orderBy: { createdAt: "desc" },
-                take: 5
-            }
-        }
-    }) as any;
+    if (session.user.role === "ADMIN") {
+        redirect("/admin");
+    }
 
-    if (!user) {
+    const profileData = await getUserProfile(session.user.email);
+
+    if (!profileData) {
         redirect("/");
     }
 
-    // Data mapped from separate models
-    const stats = user.stats || { totalPlaytime: 0, mostPlayedGame: "None" };
-    const wallet = user.wallet || { balance: 0, credits: 0 };
-    const membership = user.membership || { tier: "Bronze", points: 0, isSubscriber: false };
-    const preferences = user.preferences || { favoriteGames: [], hasPS5: false, hasVR: false, hasRacingSim: false };
+    const {
+        user,
+        stats,
+        wallet,
+        membership,
+        preferences,
+        realTotalPlaytimeMinutes,
+        availableHours
+    } = profileData;
+
+
+
 
     return (
         <div className="min-h-screen bg-black pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -99,7 +97,10 @@ export default async function ProfilePage() {
                     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-zinc-400 mb-1">Available Hours</p>
-                            <h2 className="text-2xl font-bold text-white">{(wallet.balance / 100).toFixed(1)} hrs</h2>
+                            <h2 className="text-2xl font-bold text-white">{availableHours.toFixed(1)} hrs</h2>
+                            {!membership.isSubscriber && wallet.balance > 0 && (
+                                <p className="text-xs text-zinc-500 mt-1">Wallet: ₹{wallet.balance}</p>
+                            )}
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
                             <Clock className="w-6 h-6 text-blue-500" />
@@ -108,7 +109,8 @@ export default async function ProfilePage() {
                     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-zinc-400 mb-1">Total Playtime</p>
-                            <h2 className="text-2xl font-bold text-white">{Math.floor(stats.totalPlaytime / 60)} hrs</h2>
+                            {/* Convert minutes to hours */}
+                            <h2 className="text-2xl font-bold text-white">{(realTotalPlaytimeMinutes / 60).toFixed(1)} hrs</h2>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center">
                             <History className="w-6 h-6 text-cyan-500" />

@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 import {
     Sidebar,
@@ -151,10 +152,14 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                                 sideOffset={4}
                             >
                                 <DropdownMenuItem asChild>
-                                    <Link href="/profile">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        Exit Admin
+                                    <Link href="/">
+                                        <Gamepad2 className="mr-2 h-4 w-4" />
+                                        Go to Website
                                     </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })} className="text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-100/10">
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    Log out
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
