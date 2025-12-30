@@ -68,7 +68,7 @@ const Experiences = () => {
     }, []);
 
     return (
-        <section id="experiences" ref={sectionRef} className="pt-24 pb-12 px-6 bg-background relative overflow-hidden">
+        <section id="experiences" ref={sectionRef} className="pt-24 pb-24 px-6 bg-background relative overflow-hidden">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-16">
                     <h2 className="text-4xl md:text-6xl font-black font-outfit uppercase tracking-tighter mb-4">

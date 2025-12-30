@@ -70,7 +70,7 @@ const Snacks = () => {
     }, []);
 
     return (
-        <section id="menu" ref={sectionRef} className="py-12 px-6 bg-background relative border-y border-border">
+        <section id="menu" ref={sectionRef} className="pt-0 pb-12 px-6 bg-background relative border-y border-border">
             <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16 items-center">
                 {/* Left Side: Text */}
                 <div className="lg:w-1/2 snacks-header">

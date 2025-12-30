@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import gsap from "gsap";
 
 const Hero = () => {
@@ -72,9 +73,11 @@ const Hero = () => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <button className="w-full sm:w-auto bg-primary hover:bg-neon-blue text-white px-10 py-4 rounded-full font-black text-lg transition-all shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-105 active:scale-95">
-                        BOOK A SLOT NOW
-                    </button>
+                    <Link href="/profile" className="w-full sm:w-auto">
+                        <button className="w-full bg-primary hover:bg-neon-blue text-primary-foreground hover:text-white px-10 py-4 rounded-full font-black text-lg transition-all shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-105 active:scale-95">
+                            BOOK A SLOT NOW
+                        </button>
+                    </Link>
                     <button className="w-full sm:w-auto border-2 border-white/20 hover:border-white/40 backdrop-blur-sm px-10 py-4 rounded-full font-black text-lg transition-all hover:bg-white/10 hover:scale-105 active:scale-95">
                         EXPLORE GAMES
                     </button>
