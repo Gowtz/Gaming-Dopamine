@@ -94,34 +94,36 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                     Book Now
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl p-0 bg-black/90 border-zinc-800 backdrop-blur-xl gap-0 overflow-hidden">
-                <div className="flex h-[600px] flex-col md:flex-row">
+            <DialogContent className="w-[94vw] md:w-full max-w-4xl p-0 bg-black/90 border-zinc-800 backdrop-blur-xl gap-0 overflow-hidden rounded-2xl">
+                <div className="flex h-[90vh] md:h-[600px] flex-col md:flex-row">
 
                     {/* Sidebar / Progress */}
-                    <div className="w-full md:w-64 bg-zinc-900/50 p-6 flex flex-col justify-between border-b md:border-r border-zinc-800">
-                        <div>
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-bold text-white mb-2">New Booking</DialogTitle>
-                                <DialogDescription>Reserve your gaming session.</DialogDescription>
+                    <div className="w-full md:w-64 bg-zinc-900/50 p-4 md:p-6 flex flex-col md:justify-between border-b md:border-r border-zinc-800 shrink-0">
+                        <div className="flex flex-col md:flex-col items-center md:items-start justify-center md:justify-start gap-4">
+                            <DialogHeader className="text-center md:text-left p-0 space-y-0.5 md:space-y-1.5 shrink-0">
+                                <DialogTitle className="text-lg md:text-xl font-bold text-white">New Booking</DialogTitle>
+                                <DialogDescription className="text-xs md:text-sm hidden md:block">Reserve your gaming session.</DialogDescription>
                             </DialogHeader>
 
-                            <div className="mt-8 space-y-6">
-                                <div className={cn("flex items-center gap-3 transition-colors", step >= 1 ? "text-white" : "text-zinc-500")}>
-                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border", step >= 1 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-700 bg-zinc-800")}>1</div>
-                                    <span className="font-medium">Experience</span>
+                            <div className="flex flex-row md:flex-col gap-3 md:gap-6 items-center md:items-stretch justify-center">
+                                <div className={cn("flex items-center gap-2 md:gap-3 transition-colors shrink-0", step >= 1 ? "text-white" : "text-zinc-600")}>
+                                    <div className={cn("w-8 h-8 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm border shrink-0 transition-all", step >= 1 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-800 bg-zinc-900")}>1</div>
+                                    <span className="font-medium text-xs md:text-base hidden md:inline">Experience</span>
                                 </div>
-                                <div className={cn("flex items-center gap-3 transition-colors", step >= 2 ? "text-white" : "text-zinc-500")}>
-                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border", step >= 2 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-700 bg-zinc-800")}>2</div>
-                                    <span className="font-medium">Date & Time</span>
+                                <div className="w-8 h-[1px] bg-zinc-800 md:hidden" />
+                                <div className={cn("flex items-center gap-2 md:gap-3 transition-colors shrink-0", step >= 2 ? "text-white" : "text-zinc-600")}>
+                                    <div className={cn("w-8 h-8 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm border shrink-0 transition-all", step >= 2 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-800 bg-zinc-900")}>2</div>
+                                    <span className="font-medium text-xs md:text-base hidden md:inline">Date & Time</span>
                                 </div>
-                                <div className={cn("flex items-center gap-3 transition-colors", step >= 3 ? "text-white" : "text-zinc-500")}>
-                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border", step >= 3 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-700 bg-zinc-800")}>3</div>
-                                    <span className="font-medium">Confirm</span>
+                                <div className="w-8 h-[1px] bg-zinc-800 md:hidden" />
+                                <div className={cn("flex items-center gap-2 md:gap-3 transition-colors shrink-0", step >= 3 ? "text-white" : "text-zinc-600")}>
+                                    <div className={cn("w-8 h-8 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm border shrink-0 transition-all", step >= 3 ? "border-blue-500 bg-blue-500 text-white" : "border-zinc-800 bg-zinc-900")}>3</div>
+                                    <span className="font-medium text-xs md:text-base hidden md:inline">Confirm</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Summary */}
+                        {/* Summary Desktop Only */}
                         {selectedPlatform && (
                             <div className="mt-auto hidden md:block pt-6 border-t border-zinc-800">
                                 <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Selected</p>
@@ -134,7 +136,7 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-1 p-6 md:p-8 overflow-hidden flex flex-col">
+                    <div className="flex-1 px-6 py-4 md:p-8 overflow-hidden flex flex-col min-h-0 bg-transparent">
 
                         {/* Step 1: Platform Selection */}
                         {step === 1 && (
@@ -169,16 +171,16 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                         {/* Step 2: Date & Slots */}
                         {step === 2 && (
                             <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-2xl font-bold text-white">Select Date & Time</h2>
-                                    <button onClick={() => setStep(1)} className="text-zinc-500 hover:text-white text-sm flex items-center gap-1 transition-colors">
-                                        &larr; Back to Experiences
+                                <div className="flex items-center justify-between mb-4 md:mb-6 shrink-0">
+                                    <h2 className="text-xl md:text-2xl font-bold text-white">Select Date & Time</h2>
+                                    <button onClick={() => setStep(1)} className="text-zinc-500 hover:text-white text-xs flex items-center gap-1 transition-colors px-3 py-1.5 rounded-lg hover:bg-zinc-800">
+                                        &larr; Change Mode
                                     </button>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row gap-8 h-full overflow-hidden">
                                     {/* Calendar */}
-                                    <div className="shrink-0 flex justify-center md:block">
+                                    <div className="shrink-0 flex justify-center md:block w-full">
                                         <Calendar
                                             mode="single"
                                             selected={date}
@@ -190,7 +192,7 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                                                 if (subscriptionExpiresAt && date > subscriptionExpiresAt) return true;
                                                 return false;
                                             }}
-                                            className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 pointer-events-auto"
+                                            className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 w-full max-w-[350px] mx-auto md:w-auto md:max-w-none pointer-events-auto shadow-sm"
                                         />
                                     </div>
 
@@ -213,12 +215,11 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                                                     <p className="text-zinc-600 text-sm mt-1">Please try selecting another date.</p>
                                                 </div>
                                             ) : (
-                                                <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
+
+                                                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                                                     {slots.map((slot) => {
                                                         const [sH, sM] = slot.startTime.split(':');
-                                                        const [eH, eM] = slot.endTime.split(':');
                                                         const startTimeSimple = parseInt(sM) === 0 ? parseInt(sH) : `${sH}:${sM}`;
-                                                        const endTimeSimple = parseInt(eM) === 0 ? parseInt(eH) : `${eH}:${eM}`;
 
                                                         return (
                                                             <button
@@ -226,24 +227,15 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
                                                                 disabled={slot.isFull}
                                                                 onClick={() => { setSelectedTime(slot.startTime); setStep(3); }}
                                                                 className={cn(
-                                                                    "flex flex-col items-center justify-center px-4 py-2 rounded-xl border transition-all relative group h-20",
+                                                                    "flex flex-col items-center justify-center rounded-lg border transition-all h-10 text-sm",
                                                                     slot.isFull
-                                                                        ? "opacity-50 cursor-not-allowed bg-zinc-900 border-zinc-800"
+                                                                        ? "opacity-40 cursor-not-allowed bg-zinc-900/50 border-zinc-800 text-zinc-600"
                                                                         : selectedTime === slot.startTime
-                                                                            ? "bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20"
-                                                                            : "bg-zinc-900/50 border-zinc-700 hover:bg-zinc-800 hover:border-zinc-500"
+                                                                            ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20 font-bold transform scale-105"
+                                                                            : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 hover:text-white"
                                                                 )}
                                                             >
-                                                                <span className={cn(
-                                                                    "font-bold text-lg",
-                                                                    selectedTime === slot.startTime ? "text-white" : "text-white"
-                                                                )}>
-                                                                    {startTimeSimple}-{endTimeSimple}
-                                                                </span>
-
-                                                                {slot.isFull && (
-                                                                    <span className="text-[10px] text-red-500 font-medium mt-1">Full</span>
-                                                                )}
+                                                                {startTimeSimple} - {parseInt(sH) + 1}
                                                             </button>
                                                         );
                                                     })}
@@ -319,7 +311,7 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
 
                     </div>
                 </div>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     );
 }
