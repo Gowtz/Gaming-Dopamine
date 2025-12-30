@@ -42,9 +42,8 @@ export async function getAdminDashboardData() {
                 where: { status: "Upcoming" },
                 include: {
                     user: {
-                        select: {
-                            id: true, name: true, email: true, image: true,
-                            membership: { select: { isSubscriber: true, totalHours: true, utilizedHours: true } }
+                        include: {
+                            membership: true
                         }
                     },
                     slot: true

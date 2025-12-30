@@ -392,6 +392,7 @@ export async function createOnlineBooking(platform: string, date: Date, startTim
         });
 
         revalidatePath("/profile");
+        revalidatePath("/admin");
         return { success: true, bookingId: booking.id };
     } catch (error: any) {
         console.error("Error creating online booking:", error);

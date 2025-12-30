@@ -3,6 +3,7 @@
 import { Clock, Calendar, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UpcomingSlot {
     id: string;
@@ -10,6 +11,7 @@ interface UpcomingSlot {
     user?: {
         name: string | null;
         email: string | null;
+        image: string | null;
     } | null;
     type: string;
     duration: number;
@@ -41,8 +43,19 @@ export function UpcomingSessionsList({ slots }: UpcomingSessionsListProps) {
                         className="flex items-center justify-between p-3 rounded-xl border bg-card transition-all hover:shadow-sm"
                     >
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                                <User className="h-5 w-5 text-blue-600" />
+                            <div className="shrink-0">
+                                {slot.user ? (
+                                    <Avatar className="h-10 w-10 border shadow-sm">
+                                        <AvatarImage src={slot.user.image || ""} />
+                                        <AvatarFallback className="text-xs font-bold text-blue-600 bg-blue-100">
+                                            {slot.user.name?.[0]?.toUpperCase() || "P"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                ) : (
+                                    <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                                        <User className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                )}
                             </div>
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
