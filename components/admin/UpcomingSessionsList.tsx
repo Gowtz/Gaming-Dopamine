@@ -17,6 +17,9 @@ interface UpcomingSlot {
     duration: number;
     date: Date;
     source: string;
+    slot?: {
+        title: string;
+    } | null;
 }
 
 interface UpcomingSessionsListProps {
@@ -62,6 +65,11 @@ export function UpcomingSessionsList({ slots }: UpcomingSessionsListProps) {
                                     <h4 className="font-semibold text-sm truncate">
                                         {slot.user?.name || "Guest Player"}
                                     </h4>
+                                    {slot.slot?.title && (
+                                        <Badge variant="outline" className="text-[10px] font-normal py-0 h-4 border-zinc-700 text-zinc-400">
+                                            {slot.slot.title}
+                                        </Badge>
+                                    )}
                                     <Badge variant="outline" className="text-[10px] font-normal py-0 h-4">
                                         {slot.type}
                                     </Badge>
