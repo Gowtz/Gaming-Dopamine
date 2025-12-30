@@ -54,7 +54,8 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
         if (step === 2 && selectedPlatform && date) {
             const fetchSlots = async () => {
                 setLoading(true);
-                const data = await getAvailableSlots(date, selectedPlatform);
+                const dateStr = format(date, "yyyy-MM-dd");
+                const data = await getAvailableSlots(dateStr, selectedPlatform);
                 setSlots(data);
                 setLoading(false);
             };
@@ -66,7 +67,8 @@ export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?
         if (!selectedTime || !date || !selectedPlatform) return;
         setLoading(true);
         try {
-            const result = await createOnlineBooking(selectedPlatform, date, selectedTime);
+            const dateStr = format(date, "yyyy-MM-dd");
+            const result = await createOnlineBooking(selectedPlatform, dateStr, selectedTime);
             if (result.success) {
                 setBookingStatus('success');
                 setTimeout(() => {

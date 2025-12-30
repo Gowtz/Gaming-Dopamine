@@ -139,6 +139,7 @@ export async function deleteBooking(bookingId: string) {
         return { success: true };
     } catch (error) {
         console.error("Error deleting booking:", error);
+        return { success: false, error: "Failed to delete booking" };
     }
 }
 
@@ -160,7 +161,7 @@ function formatMinutesToTime(totalMinutes: number) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
-export async function getAvailableSlots(date: Date, platform: string) {
+export async function getAvailableSlots(date: Date | string, platform: string) {
     try {
         const slots = await prisma.slot.findMany({
             where: {
@@ -170,9 +171,18 @@ export async function getAvailableSlots(date: Date, platform: string) {
             }
         });
 
-        const startOfDay = new Date(date);
+        let targetDate = new Date(date);
+        // Robust parsing for YYYY-MM-DD string to avoid timezone shifts
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const [y, m, d] = date.split('-').map(Number);
+            targetDate = new Date();
+            targetDate.setFullYear(y, m - 1, d);
+            targetDate.setHours(0, 0, 0, 0);
+        }
+
+        const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
+        const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
         const bookingsOnDate = await prisma.booking.findMany({
@@ -203,7 +213,7 @@ export async function getAvailableSlots(date: Date, platform: string) {
             const now = new Date();
             for (let currentStart = slotStartMins; currentStart + 60 <= slotEndMins; currentStart += 60) {
                 // Calculate precise start time for this block
-                const blockStart = new Date(date);
+                const blockStart = new Date(targetDate);
                 blockStart.setHours(Math.floor(currentStart / 60), currentStart % 60, 0, 0);
 
                 // Skip if this specific hour block is in the past
@@ -240,7 +250,7 @@ export async function getAvailableSlots(date: Date, platform: string) {
 
                 const conflictsForThisSlotBlock = bookingsForThisPhysicalSlot.filter(b => {
                     const [bSH, bSM] = (b.startTime as string).split(':').map(Number);
-                    const bStart = new Date(date);
+                    const bStart = new Date(targetDate);
                     bStart.setHours(bSH, bSM, 0, 0);
                     const bEnd = new Date(bStart);
                     bEnd.setMinutes(bEnd.getMinutes() + b.duration);
@@ -268,7 +278,7 @@ export async function getAvailableSlots(date: Date, platform: string) {
     }
 }
 
-export async function createOnlineBooking(platform: string, date: Date, startTime: string) {
+export async function createOnlineBooking(platform: string, date: Date | string, startTime: string) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
@@ -286,9 +296,19 @@ export async function createOnlineBooking(platform: string, date: Date, startTim
         const reqStartMins = parseTimeToMinutes(startTime);
         const reqEndMins = reqStartMins + bookingDuration;
 
-        const bookingDate = new Date(date);
+        let bookingDate: Date;
+        // Robust parsing for YYYY-MM-DD string to avoid timezone shifts
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const [y, m, d] = date.split('-').map(Number);
+            bookingDate = new Date();
+            bookingDate.setFullYear(y, m - 1, d);
+        } else {
+            bookingDate = new Date(date);
+        }
+
         const [h, m] = startTime.split(':').map(Number);
         bookingDate.setHours(h, m, 0, 0);
+
         const bookingEnd = new Date(bookingDate);
         bookingEnd.setMinutes(bookingEnd.getMinutes() + bookingDuration);
 
@@ -357,14 +377,29 @@ export async function createOnlineBooking(platform: string, date: Date, startTim
 
         if (user.membership?.isSubscriber) {
             const hoursNeeded = bookingDuration / 60;
-            const available = (user.membership.totalHours || 0) - (user.membership.utilizedHours || 0);
+
+            // Calculate Pending (Reserved) Hours
+            // effectively: Future + Active + UnprocessedExpired bookings
+            const pendingBookings = await prisma.booking.findMany({
+                where: {
+                    userId: user.id,
+                    status: { in: ["Upcoming", "Ongoing"] },
+                    paymentMethod: "SUBSCRIPTION"
+                },
+                select: { duration: true }
+            });
+            const pendingMinutes = pendingBookings.reduce((sum, b) => sum + b.duration, 0);
+            const pendingHours = pendingMinutes / 60;
+
+            const baseAvailable = (user.membership.totalHours || 0) - (user.membership.utilizedHours || 0);
+            const trueAvailable = baseAvailable - pendingHours;
 
             // Check if booking date is within subscription period
             const isSubscriptionValidForDate = user.membership.expiresAt
                 ? new Date(user.membership.expiresAt) >= bookingDate
                 : false;
 
-            if (available >= hoursNeeded && isSubscriptionValidForDate) {
+            if (trueAvailable >= hoursNeeded && isSubscriptionValidForDate) {
                 paymentMethod = "SUBSCRIPTION";
             }
         }
