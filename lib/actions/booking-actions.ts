@@ -200,7 +200,18 @@ export async function getAvailableSlots(date: Date, platform: string) {
             const slotEndMins = slotStartMins + slot.duration;
 
             // Slice into 60-minute blocks
+            const now = new Date();
             for (let currentStart = slotStartMins; currentStart + 60 <= slotEndMins; currentStart += 60) {
+                // Calculate precise start time for this block
+                const blockStart = new Date(date);
+                blockStart.setHours(Math.floor(currentStart / 60), currentStart % 60, 0, 0);
+
+                // Skip if this specific hour block is in the past
+                // We add a small buffer (e.g. 0 mins) or strict check
+                if (blockStart < now) {
+                    continue;
+                }
+
                 const currentEnd = currentStart + 60;
                 const timeKey = formatMinutesToTime(currentStart);
                 const endTimeStr = formatMinutesToTime(currentEnd);
@@ -218,8 +229,7 @@ export async function getAvailableSlots(date: Date, platform: string) {
                 aggregatedSlots[timeKey].maxPlayers += slot.maxPlayers;
 
                 // Calculate bookings that overlap strictly with THIS hour
-                const blockStart = new Date(date);
-                blockStart.setHours(Math.floor(currentStart / 60), currentStart % 60, 0, 0);
+                // blockStart is already calculated above
                 const blockEnd = new Date(blockStart);
                 blockEnd.setMinutes(blockEnd.getMinutes() + 60);
 

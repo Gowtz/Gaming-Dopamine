@@ -98,7 +98,7 @@ export default async function ProfilePage() {
                         {/* Action Button */}
                         <div className="w-full md:w-auto">
                             <div className="w-full md:w-auto">
-                                <BookingModal />
+                                <BookingModal subscriptionExpiresAt={'expiresAt' in membership && membership.expiresAt ? new Date(membership.expiresAt) : null} />
                             </div>
                         </div>
                     </div>

@@ -39,7 +39,7 @@ const PLATFORMS = [
     }
 ];
 
-export function BookingModal() {
+export function BookingModal({ subscriptionExpiresAt }: { subscriptionExpiresAt?: Date | null }) {
     const [isOpen, setIsOpen] = useState(false);
     const [step, setStep] = useState(1);
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
@@ -183,7 +183,13 @@ export function BookingModal() {
                                             mode="single"
                                             selected={date}
                                             onSelect={setDate}
-                                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                            disabled={(date) => {
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                if (date < today) return true;
+                                                if (subscriptionExpiresAt && date > subscriptionExpiresAt) return true;
+                                                return false;
+                                            }}
                                             className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 pointer-events-auto"
                                         />
                                     </div>
@@ -207,7 +213,7 @@ export function BookingModal() {
                                                     <p className="text-zinc-600 text-sm mt-1">Please try selecting another date.</p>
                                                 </div>
                                             ) : (
-                                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                                <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
                                                     {slots.map((slot) => {
                                                         const [sH, sM] = slot.startTime.split(':');
                                                         const [eH, eM] = slot.endTime.split(':');
@@ -220,7 +226,7 @@ export function BookingModal() {
                                                                 disabled={slot.isFull}
                                                                 onClick={() => { setSelectedTime(slot.startTime); setStep(3); }}
                                                                 className={cn(
-                                                                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all relative group h-20",
+                                                                    "flex flex-col items-center justify-center px-4 py-2 rounded-xl border transition-all relative group h-20",
                                                                     slot.isFull
                                                                         ? "opacity-50 cursor-not-allowed bg-zinc-900 border-zinc-800"
                                                                         : selectedTime === slot.startTime
