@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Gamepad2, Instagram, Twitter, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import { Gamepad2, Instagram, Twitter, Facebook, Mail, Phone, MapPin, ExternalLink } from "lucide-react";
+
 
 const Footer = () => {
     return (
@@ -23,11 +24,8 @@ const Footer = () => {
                             Your neighborhood premium gaming destination. PS5, VR, and Pro Racing Simulators under one roof.
                         </p>
                         <div className="flex gap-4">
-                            <a href="#" className="p-2 border border-border rounded-lg hover:border-primary transition-colors">
+                            <a href="https://www.instagram.com/gamingdopamine" className="p-2 border border-border rounded-lg hover:border-primary transition-colors">
                                 <Instagram className="w-5 h-5" />
-                            </a>
-                            <a href="#" className="p-2 border border-border rounded-lg hover:border-primary transition-colors">
-                                <Twitter className="w-5 h-5" />
                             </a>
                             <a href="#" className="p-2 border border-border rounded-lg hover:border-primary transition-colors">
                                 <Facebook className="w-5 h-5" />
@@ -54,13 +52,21 @@ const Footer = () => {
                             Get In Touch
                         </h4>
                         <ul className="flex flex-col gap-4 text-foreground/60">
-                            <li className="flex items-center gap-3">
-                                <MapPin className="w-5 h-5 text-primary" />
-                                <span className="text-sm">123 Gamer St, Tech City</span>
+                            <li className="flex items-start gap-3">
+                                <MapPin className="w-5 h-5 text-primary mt-1 shrink-0" />
+                                <a
+                                    href="https://maps.app.goo.gl/r1MuobVftRxQ8fAk7"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm hover:text-primary transition-colors flex items-start gap-2 group"
+                                >
+                                    <span>1st floor, KMS Complex, Belathur, Kadugodi, Bengaluru, Karnataka 560067</span>
+                                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
+                                </a>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Phone className="w-5 h-5 text-primary" />
-                                <span className="text-sm">+1 (555) 001-PLAY</span>
+                                <a href="tel:+917625097713" className="text-sm hover:text-primary transition-colors">+91 7625097713</a>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Mail className="w-5 h-5 text-primary" />
@@ -76,17 +82,14 @@ const Footer = () => {
                         </h4>
                         <ul className="flex flex-col gap-3 text-sm text-foreground/60">
                             <li className="flex justify-between">
-                                <span>Mon - Thu</span>
-                                <span className="font-bold text-foreground">10AM - 11PM</span>
+                                <span>Mon</span>
+                                <span className="font-bold text-foreground">11AM - 11PM</span>
                             </li>
                             <li className="flex justify-between">
-                                <span>Fri - Sat</span>
-                                <span className="font-bold text-neon-blue">10AM - 3AM</span>
+                                <span>Fri - Sun</span>
+                                <span className="font-bold text-neon-blue">10AM - 11PM</span>
                             </li>
-                            <li className="flex justify-between">
-                                <span>Sunday</span>
-                                <span className="font-bold text-foreground">12PM - 10PM</span>
-                            </li>
+
                         </ul>
                     </div>
                 </div>
@@ -96,7 +99,7 @@ const Footer = () => {
                         © 2024 DOPAMINE GAMING CAFÉ. ALL RIGHTS RESERVED.
                     </p>
                     <p className="text-xs text-foreground/30 uppercase tracking-[0.2em] flex items-center gap-2">
-                        DESIGNED BY <span className="text-primary font-bold">ANTIGRAVITY</span>
+                        DESIGNED BY <span className="text-primary font-bold">Gowtham</span>
                     </p>
                 </div>
             </div>

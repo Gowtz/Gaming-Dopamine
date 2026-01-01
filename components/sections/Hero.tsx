@@ -63,7 +63,7 @@ const Hero = () => {
             <div ref={contentRef} className="hero-text relative z-10 text-center px-6 max-w-5xl">
                 <h1 className="text-5xl md:text-8xl font-black font-outfit uppercase tracking-tighter leading-none mb-6">
                     Level Up Your <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-neon-blue animate-gradient text-shadow-neon-blue">
+                    <span className="text-neon-blue text-shadow-neon-blue-soft">
                         Gaming Experience
                     </span>
                 </h1>
@@ -78,9 +78,11 @@ const Hero = () => {
                             BOOK A SLOT NOW
                         </button>
                     </Link>
-                    <button className="w-full sm:w-auto border-2 border-white/20 hover:border-white/40 backdrop-blur-sm px-10 py-4 rounded-full font-black text-lg transition-all hover:bg-white/10 hover:scale-105 active:scale-95">
-                        EXPLORE GAMES
-                    </button>
+                    <Link href="/profile" className="w-full sm:w-auto">
+                        <button className="w-full border-2 border-white/20 hover:border-white/40 backdrop-blur-sm px-10 py-4 rounded-full font-black text-lg transition-all hover:bg-white/10 hover:scale-105 active:scale-95">
+                            EXPLORE GAMES
+                        </button>
+                    </Link>
                 </div>
             </div>
 

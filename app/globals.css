@@ -175,6 +175,10 @@ html.dark .admin-theme {
     text-shadow: 0 0 10px hsl(var(--neon-blue)), 0 0 20px hsl(var(--neon-blue));
   }
 
+  .text-shadow-neon-blue-soft {
+    text-shadow: 0 0 10px hsl(var(--neon-blue) / 0.8);
+  }
+
   .text-shadow-neon-purple {
     text-shadow: 0 0 10px hsl(var(--neon-purple)), 0 0 20px hsl(var(--neon-purple));
   }
